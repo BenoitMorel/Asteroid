@@ -1,0 +1,3 @@
+[submodule "coraxlib"]
+	path = coraxlib
+	url = https://codeberg.org/Exelixis-Lab/coraxlib.git
