@@ -19,5 +19,6 @@ struct Arguments {
   std::string geneSpeciesMapping;
   unsigned int seed;
 
+  bool noCorrection;
   double minBL;
 };

@@ -14,7 +14,8 @@ void computeFromGeneTreeAux(corax_unode_t *node,
     distances[spid] = std::min(d, distances[spid]); 
     return;
   }
-  if (node->length >= params.minBL) {
+  if (node->length >= params.minBL // contract min branch length
+      || !node->back->next) { // always add one at first level of recursion
     d += 1.0;
   }
   computeFromGeneTreeAux(node->next->back, params, d, distances);

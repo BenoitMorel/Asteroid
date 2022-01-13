@@ -4,6 +4,7 @@
 #include "AsteroidOptimizer.hpp"
 #include <IO/Logger.hpp>
 #include <IO/GeneSpeciesMapping.hpp>
+#include <maths/Random.hpp>
 #include "Arguments.hpp"
 #include <trees/PLLUnrootedTree.hpp>
 #include <DistanceMethods/InternodeDistance.hpp>
@@ -69,6 +70,7 @@ int main(int argc, char * argv[])
   Logger::timed << "Starting Asteroid..." << std::endl;
   Arguments arg(argc, argv);
   arg.printCommand();
+  Random::setSeed(static_cast<unsigned int>(arg.seed));
 
   // read all gene trees
   Logger::timed << "Parsing gene trees..." << std::endl;

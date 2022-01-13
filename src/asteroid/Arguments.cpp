@@ -6,6 +6,7 @@
 Arguments::Arguments(int argc, char * argv[]):
   argc(argc),
   argv(argv),
+  noCorrection(false),
   minBL(-1.0)
 {
   if (argc == 1) {
@@ -27,6 +28,8 @@ Arguments::Arguments(int argc, char * argv[]):
       geneSpeciesMapping = std::string(argv[++i]);
     } else if (arg == "--seed") {
       seed = atoi(argv[++i]);
+    } else if (arg == "-n" || arg == "--no-correction") {
+      noCorrection = true;
     } else if (arg == "-b" || arg == "--min-bl") {
       minBL = atof(argv[++i]);
     } else {
