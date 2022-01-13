@@ -47,16 +47,58 @@ static DistanceMatrix initDistancetMatrix(unsigned int N,
   return DistanceMatrix(N, nullDistances); 
 }
   
+void fillDistanceMatricesAstrid(GeneTrees &geneTrees, 
+    unsigned int speciesNumber, 
+    const IDParam &params,
+    std::vector<DistanceMatrix> &distanceMatrices)
+{
+  DistanceMatrix sum = initDistancetMatrix(speciesNumber,
+      speciesNumber, 
+      0.0);
+  DistanceMatrix denominator = initDistancetMatrix(speciesNumber,
+      speciesNumber, 
+      0.0);
+  for (unsigned int k = 0; k < geneTrees.size(); ++k) {
+  DistanceMatrix temp = initDistancetMatrix(speciesNumber,
+      speciesNumber, 
+      std::numeric_limits<double>::infinity());
+    auto &geneTree = *geneTrees[k];
+    InternodeDistance::computeFromGeneTree(geneTree, temp, params);
+    for (unsigned int i = 0; i < speciesNumber; ++i) {
+      for (unsigned int j = 0; j < speciesNumber; ++j) {
+        if (temp[i][j] != std::numeric_limits<double>::infinity()) {
+          sum[i][j] += temp[i][j];
+          temp[i][j] = std::numeric_limits<double>::infinity();
+          denominator[i][j] += 1.0;
+        }
+      }
+    }
+  }
+  for (unsigned int i = 0; i < speciesNumber; ++i) {
+    for (unsigned int j = 0; j < speciesNumber; ++j) {
+      if (i ==j) {
+        continue;
+      }
+      if (denominator[i][j] == 0.0) {
+        Logger::info << "Warning: missing entry in the distance matrix" << std::endl;
+        
+      } else {
+        sum[i][j] /= denominator[i][j];
+      }
+    }
+  }
+  distanceMatrices.push_back(sum);
+}
+
 void fillDistanceMatricesAsteroid(GeneTrees &geneTrees, 
     unsigned int speciesNumber, 
     const IDParam &params,
     std::vector<DistanceMatrix> &distanceMatrices)
 {
   distanceMatrices.resize(geneTrees.size());
-   
-  for (unsigned int i = 0; i < geneTrees.size(); ++i) {
-    auto &d = distanceMatrices[i];
-    auto &geneTree = *geneTrees[i];
+  for (unsigned int k = 0; k < geneTrees.size(); ++k) {
+    auto &d = distanceMatrices[k];
+    auto &geneTree = *geneTrees[k];
     d = initDistancetMatrix(speciesNumber,
         speciesNumber,
         std::numeric_limits<double>::infinity());
@@ -109,12 +151,18 @@ int main(int argc, char * argv[])
   std::vector<DistanceMatrix> distanceMatrices;
   IDParam idParams;
   idParams.minBL = arg.minBL;
-  
-  fillDistanceMatricesAsteroid(geneTrees, 
-      speciesNumber, 
-      idParams, 
-      distanceMatrices);
-
+ 
+  if (!arg.noCorrection) {
+    fillDistanceMatricesAsteroid(geneTrees, 
+        speciesNumber, 
+        idParams, 
+        distanceMatrices);
+  } else {
+    fillDistanceMatricesAstrid(geneTrees, 
+        speciesNumber, 
+        idParams, 
+        distanceMatrices);
+  }
   Logger::timed << "Initializing random starting species tree..." << std::endl;
   // Initial species tree 
   PLLUnrootedTree speciesTree(mapping.getCoveredSpecies());
@@ -124,15 +172,21 @@ int main(int argc, char * argv[])
     leaf->data = reinterpret_cast<void*>(spid);
   }
 
-  
+    
 
-  BoolMatrix perFamilyCoverage(geneTrees.size(),
-      std::vector<bool>(speciesNumber, false));
-  for (unsigned int k = 0; k < geneTrees.size(); ++k) {
-    for (auto geneLeaf: geneTrees[k]->getLeaves()) {
-      auto spid = reinterpret_cast<intptr_t>(geneLeaf->data);
-      perFamilyCoverage[k][spid] = true;
+  BoolMatrix perFamilyCoverage;
+  
+  if (!arg.noCorrection) {
+    perFamilyCoverage = BoolMatrix(geneTrees.size(),
+        std::vector<bool>(speciesNumber, false));
+    for (unsigned int k = 0; k < geneTrees.size(); ++k) {
+      for (auto geneLeaf: geneTrees[k]->getLeaves()) {
+        auto spid = reinterpret_cast<intptr_t>(geneLeaf->data);
+        perFamilyCoverage[k][spid] = true;
+      }
     }
+  } else {
+    perFamilyCoverage.push_back(std::vector<bool>(speciesNumber, true));
   }
   
 
