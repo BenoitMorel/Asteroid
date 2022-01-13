@@ -134,12 +134,16 @@ int main(int argc, char * argv[])
   }
   
 
+  Logger::timed << "Initializing optimizer... " << std::endl;
   // Perform search
   AsteroidOptimizer optimizer(speciesTree,
       perFamilyCoverage,
       distanceMatrices);
+  Logger::timed << "Starting tree search... " << std::endl;
   optimizer.optimize();
 
+  std::string outputSpeciesTreeFile = arg.prefix + ".newick";
+  speciesTree.save(outputSpeciesTreeFile);
 
   return 0;
 
