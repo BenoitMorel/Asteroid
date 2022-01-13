@@ -5,7 +5,8 @@
 
 Arguments::Arguments(int argc, char * argv[]):
   argc(argc),
-  argv(argv)
+  argv(argv),
+  minBL(-1.0)
 {
   if (argc == 1) {
     printHelp();
@@ -19,11 +20,15 @@ Arguments::Arguments(int argc, char * argv[]):
     } else if (arg == "-i" || arg == "--input-gene-trees") {
       inputGeneTreeFile = std::string(argv[++i]);
     } else if (arg == "-s" || arg == "--starting-species-tree") {
-      outputSpeciesTree = std::string(argv[++i]);
-    } else if (arg == "-o" || arg == "--output-species-tree") {
-      outputSpeciesTree = std::string(argv[++i]);
+      startingSpeciesTree = std::string(argv[++i]);
+    } else if (arg == "-p" || arg == "--prefix") {
+      prefix = std::string(argv[++i]);
+    } else if (arg == "-m" || arg == "--gene-species-mapping") {
+      geneSpeciesMapping = std::string(argv[++i]);
     } else if (arg == "--seed") {
       seed = atoi(argv[++i]);
+    } else if (arg == "-b" || arg == "--min-bl") {
+      minBL = atof(argv[++i]);
     } else {
       Logger::info << "Unrecognized argument " << arg << std::endl;
       Logger::info << "Aborting" << std::endl;

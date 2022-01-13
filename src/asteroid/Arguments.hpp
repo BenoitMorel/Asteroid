@@ -2,21 +2,22 @@
 
 #include <string>
 
-class Arguments {
-public:
-
+struct Arguments {
   Arguments(int argc, char * argv[]);
   void printHelp();
   void printCommand();
  
-private:
   int argc;
   char ** argv;
 
   std::string inputGeneTreeFile;
   std::string startingSpeciesTree;
-  std::string outputSpeciesTree;
-
+  std::string prefix;
+  // if this argument is not set, we assume
+  // single-copy families and that gene names
+  // correspond to species names
+  std::string geneSpeciesMapping;
   unsigned int seed;
-public:
+
+  double minBL;
 };
