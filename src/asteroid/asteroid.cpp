@@ -29,11 +29,11 @@ void parseTrees(const std::string &inputGeneTreeFile,
 }
 
 void setGeneTreeSpid(PLLUnrootedTree &geneTree,
-    const GeneSpeciesMapping &mapping,
+    const GeneSpeciesMapping &mappings,
     const StringToUint &speciesToSpid)
 {
   for (auto leaf: geneTree.getLeaves()) {
-    const auto &species = mapping.getSpecies(leaf->label);
+    const auto &species = mappings.getSpecies(leaf->label);
     intptr_t spid = static_cast<intptr_t>(speciesToSpid.at(species));
     leaf->data = reinterpret_cast<void*>(spid);
   }
@@ -106,49 +106,69 @@ void fillDistanceMatricesAsteroid(GeneTrees &geneTrees,
   }
 }
 
-int main(int argc, char * argv[])
+void init(Arguments &arg)
 {
+  ParallelContext::init(0);
   Logger::init();
   Logger::timed << "Starting Asteroid..." << std::endl;
-  Arguments arg(argc, argv);
   arg.printCommand();
   Random::setSeed(static_cast<unsigned int>(arg.seed));
+}
 
-  // read all gene trees
+void close()
+{
+  Logger::close();
+  ParallelContext::finalize();
+}
+
+void readGeneTrees(const std::string &inputGeneTreeFile,
+    GeneTrees &geneTrees)
+{
   Logger::timed << "Parsing gene trees..." << std::endl;
-  GeneTrees geneTrees;
-  parseTrees(arg.inputGeneTreeFile,
+  parseTrees(inputGeneTreeFile,
       geneTrees);
-
   Logger::timed << "Number of gene trees:" << geneTrees.size() << std::endl;
+}
 
-  // fill gene to species mapping
-  GeneSpeciesMapping mapping;
+void extractMappings(const Arguments &arg,
+    GeneTrees &geneTrees,
+    GeneSpeciesMapping &mappings,
+    StringToUint &speciesToSpid)
+{
+  Logger::timed << "Mapping gene to species..." << std::endl;
   if (!arg.geneSpeciesMapping.size()) {
     for (auto geneTree: geneTrees) {
-      mapping.fillFromGeneTree(*geneTree);
+      mappings.fillFromGeneTree(*geneTree);
     }
   } else {
-    mapping.fillFromMappingFile(arg.geneSpeciesMapping); 
+    mappings.fillFromMappingFile(arg.geneSpeciesMapping); 
   }
- 
-  // species to ID mapping
-  StringToUint speciesToSpid;
-  unsigned int speciesNumber = mapping.getCoveredSpecies().size();
-  for (const auto &species: mapping.getCoveredSpecies()) {
+  std::set<std::string> sortedSpecies(mappings.getCoveredSpecies().begin(),
+      mappings.getCoveredSpecies().end());
+  for (const auto &species: sortedSpecies) {
     speciesToSpid.insert({species, speciesToSpid.size()});
   }
-
   Logger::timed << "Number of species: " 
-    << speciesNumber
+    << speciesToSpid.size() 
     << std::endl;
+}
 
+
+void applyMappings(GeneSpeciesMapping &mappings,
+    StringToUint &speciesToSpid,
+    GeneTrees &geneTrees)
+{
   for (auto geneTree: geneTrees) {
-    setGeneTreeSpid(*geneTree, mapping, speciesToSpid);
+    setGeneTreeSpid(*geneTree, mappings, speciesToSpid);
   }
+}
 
+void computeGeneDistances(const Arguments &arg,
+    GeneTrees &geneTrees,
+    unsigned int speciesNumber,
+    std::vector<DistanceMatrix> &distanceMatrices)
+{
   Logger::timed << "Computing internode distances from the gene trees..." << std::endl;
-  std::vector<DistanceMatrix> distanceMatrices;
   IDParam idParams;
   idParams.minBL = arg.minBL;
  
@@ -163,19 +183,14 @@ int main(int argc, char * argv[])
         idParams, 
         distanceMatrices);
   }
-  Logger::timed << "Initializing random starting species tree..." << std::endl;
-  // Initial species tree 
-  PLLUnrootedTree speciesTree(mapping.getCoveredSpecies());
-  speciesTree.reindexLeaves(speciesToSpid);
-  for (auto leaf: speciesTree.getLeaves()) {
-    intptr_t spid = static_cast<intptr_t>(leaf->node_index);
-    leaf->data = reinterpret_cast<void*>(spid);
-  }
-
-    
-
-  BoolMatrix perFamilyCoverage;
+}
   
+void computeFamilyCoverage(const Arguments &arg,
+    GeneTrees &geneTrees,
+    unsigned int speciesNumber,
+    BoolMatrix &perFamilyCoverage)
+{
+  Logger::timed << "Computing coverage..." << std::endl;
   if (!arg.noCorrection) {
     perFamilyCoverage = BoolMatrix(geneTrees.size(),
         std::vector<bool>(speciesNumber, false));
@@ -188,6 +203,54 @@ int main(int argc, char * argv[])
   } else {
     perFamilyCoverage.push_back(std::vector<bool>(speciesNumber, true));
   }
+} 
+
+void getPerCoreGeneTrees(GeneTrees &geneTrees,
+    GeneTrees &perCoreGeneTrees)
+{
+  auto K = geneTrees.size();
+  auto begin = ParallelContext::getBegin(K);
+  auto end = ParallelContext::getEnd(K);
+  perCoreGeneTrees.clear();
+  for (unsigned int k = begin; k < end; ++k) {
+    perCoreGeneTrees.push_back(geneTrees[k]);
+  }
+}
+
+
+int main(int argc, char * argv[])
+{
+  Arguments arg(argc, argv);
+  GeneTrees geneTrees;
+  GeneTrees perCoreGeneTrees;
+  StringToUint speciesToSpid;
+  std::vector<DistanceMatrix> distanceMatrices;
+  BoolMatrix perFamilyCoverage;
+  
+  init(arg);
+  readGeneTrees(arg.inputGeneTreeFile, geneTrees);
+  GeneSpeciesMapping mappings;
+  extractMappings(arg, geneTrees, mappings, speciesToSpid); 
+  unsigned int speciesNumber = mappings.getCoveredSpecies().size();
+ 
+
+  getPerCoreGeneTrees(geneTrees, perCoreGeneTrees);
+
+  applyMappings(mappings, speciesToSpid, perCoreGeneTrees); 
+  computeFamilyCoverage(arg, perCoreGeneTrees, speciesNumber, perFamilyCoverage);
+  computeGeneDistances(arg, perCoreGeneTrees, speciesNumber, distanceMatrices); 
+
+  // Initial species tree 
+  Logger::timed << "Initializing random starting species tree..." << std::endl;
+  PLLUnrootedTree speciesTree(mappings.getCoveredSpecies());
+  speciesTree.reindexLeaves(speciesToSpid);
+  for (auto leaf: speciesTree.getLeaves()) {
+    intptr_t spid = static_cast<intptr_t>(leaf->node_index);
+    leaf->data = reinterpret_cast<void*>(spid);
+  }
+
+    
+
   
 
   Logger::timed << "Initializing optimizer... " << std::endl;
@@ -201,6 +264,7 @@ int main(int argc, char * argv[])
   std::string outputSpeciesTreeFile = arg.prefix + ".newick";
   speciesTree.save(outputSpeciesTreeFile);
 
+  close();
   return 0;
 
 }

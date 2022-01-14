@@ -6,6 +6,7 @@
 Arguments::Arguments(int argc, char * argv[]):
   argc(argc),
   argv(argv),
+  seed(1),
   noCorrection(false),
   minBL(-1.0)
 {
