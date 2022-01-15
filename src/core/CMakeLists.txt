@@ -4,6 +4,7 @@ set(asteroid-core_SOURCES
   DistanceMethods/Asteroid.cpp
   IO/Logger.cpp
   IO/GeneSpeciesMapping.cpp
+  IO/ParallelOfstream.cpp
   maths/Random.cpp
   trees/PLLUnrootedTree.cpp
   parallelization/ParallelContext.cpp

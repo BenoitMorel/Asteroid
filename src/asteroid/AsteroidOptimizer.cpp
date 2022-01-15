@@ -134,7 +134,7 @@ AsteroidOptimizer::AsteroidOptimizer(PLLUnrootedTree &speciesTree,
   ParallelContext::barrier();
 }
 
-void AsteroidOptimizer::optimize()
+double AsteroidOptimizer::optimize()
 {
   double startingScore = eval(_speciesTree); 
   Logger::info << "Starting score: " << startingScore << std::endl;
@@ -145,6 +145,7 @@ void AsteroidOptimizer::optimize()
     ++it;
   }
   Logger::info << "SPR search stopped after " << it << " iterations" << std::endl;
+  return _lastScore;
 }
 
 

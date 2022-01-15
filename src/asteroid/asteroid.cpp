@@ -10,8 +10,21 @@
 #include <DistanceMethods/InternodeDistance.hpp>
 #include <memory>
 #include <set>
+#include <algorithm>
+#include <IO/ParallelOfstream.hpp>
 
-using GeneTrees = std::vector<std::shared_ptr<PLLUnrootedTree> >;
+using TreePtr = std::shared_ptr<PLLUnrootedTree>;
+using Trees = std::vector<TreePtr>;
+using GeneTrees = Trees;
+using SpeciesTrees = Trees;
+struct ScoredTree {
+  TreePtr tree;
+  double score;
+  bool operator < (const ScoredTree& other) const {
+    return other.score < score;
+  }
+};
+using ScoredTrees = std::vector<ScoredTree>;
 
 void parseTrees(const std::string &inputGeneTreeFile,
     GeneTrees &geneTrees)
@@ -217,6 +230,39 @@ void getPerCoreGeneTrees(GeneTrees &geneTrees,
   }
 }
 
+ScoredTrees search(SpeciesTrees &startingSpeciesTrees,
+  const std::vector<DistanceMatrix> &distanceMatrices,
+  const BoolMatrix &perFamilyCoverage)
+{
+  ScoredTrees scoredTrees;
+  // Perform search
+  for (auto speciesTree: startingSpeciesTrees) {
+    Logger::timed << "Initializing optimizer... " << std::endl;
+    AsteroidOptimizer optimizer(*speciesTree,
+        perFamilyCoverage,
+        distanceMatrices);
+    Logger::timed << "Starting tree search... " << std::endl;
+    ScoredTree st;
+    st.tree = speciesTree;
+    st.score = optimizer.optimize();
+    scoredTrees.push_back(st);
+  }
+  std::sort(scoredTrees.begin(), scoredTrees.end());
+  return scoredTrees;
+}
+
+TreePtr generateRandomSpeciesTree(std::unordered_set<std::string> &labels,
+  const StringToUint &speciesToSpid)
+{
+  auto speciesTree = std::make_shared<PLLUnrootedTree>(
+      labels);
+  speciesTree->reindexLeaves(speciesToSpid);
+  for (auto leaf: speciesTree->getLeaves()) {
+    intptr_t spid = static_cast<intptr_t>(leaf->node_index);
+    leaf->data = reinterpret_cast<void*>(spid);
+  }
+  return speciesTree;
+}
 
 int main(int argc, char * argv[])
 {
@@ -232,38 +278,40 @@ int main(int argc, char * argv[])
   GeneSpeciesMapping mappings;
   extractMappings(arg, geneTrees, mappings, speciesToSpid); 
   unsigned int speciesNumber = mappings.getCoveredSpecies().size();
+  auto speciesLabels = mappings.getCoveredSpecies();
  
 
   getPerCoreGeneTrees(geneTrees, perCoreGeneTrees);
-
   applyMappings(mappings, speciesToSpid, perCoreGeneTrees); 
   computeFamilyCoverage(arg, perCoreGeneTrees, speciesNumber, perFamilyCoverage);
   computeGeneDistances(arg, perCoreGeneTrees, speciesNumber, distanceMatrices); 
 
-  // Initial species tree 
-  Logger::timed << "Initializing random starting species tree..." << std::endl;
-  PLLUnrootedTree speciesTree(mappings.getCoveredSpecies());
-  speciesTree.reindexLeaves(speciesToSpid);
-  for (auto leaf: speciesTree.getLeaves()) {
-    intptr_t spid = static_cast<intptr_t>(leaf->node_index);
-    leaf->data = reinterpret_cast<void*>(spid);
+  SpeciesTrees startingSpeciesTrees;
+  for (unsigned int i = 0; i < arg.randomStartingTrees; ++i) {
+    auto speciesTree = generateRandomSpeciesTree(speciesLabels, 
+        speciesToSpid);
+    startingSpeciesTrees.push_back(speciesTree);
+  }
+  ScoredTrees scoredTrees = search(startingSpeciesTrees,
+      distanceMatrices,
+      perFamilyCoverage);
+
+  std::string outputSpeciesTreeFile = arg.prefix + ".bestTree.newick";
+  std::string outputSpeciesTreesFile = arg.prefix + ".allTrees.newick";
+  std::string outputScoresFile = arg.prefix + ".scores.txt"; 
+  Logger::timed << "Final tree scores: " << std::endl;
+  Logger::timed << "Printing the best tree into " << outputSpeciesTreeFile << std::endl;
+  scoredTrees[0].tree->save(outputSpeciesTreeFile);
+  ParallelOfstream treesOs(outputSpeciesTreesFile);
+  ParallelOfstream scoresOs(outputScoresFile);
+  for (const auto &st: scoredTrees) {
+    treesOs << st.tree->getNewickString() << std::endl;
+    scoresOs << st.score << std::endl;
+    Logger::info << st.score << std::endl;
   }
 
-    
 
   
-
-  Logger::timed << "Initializing optimizer... " << std::endl;
-  // Perform search
-  AsteroidOptimizer optimizer(speciesTree,
-      perFamilyCoverage,
-      distanceMatrices);
-  Logger::timed << "Starting tree search... " << std::endl;
-  optimizer.optimize();
-
-  std::string outputSpeciesTreeFile = arg.prefix + ".newick";
-  speciesTree.save(outputSpeciesTreeFile);
-
   close();
   return 0;
 

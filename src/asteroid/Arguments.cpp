@@ -6,6 +6,7 @@
 Arguments::Arguments(int argc, char * argv[]):
   argc(argc),
   argv(argv),
+  randomStartingTrees(1),
   seed(1),
   noCorrection(false),
   minBL(-1.0)
@@ -21,8 +22,8 @@ Arguments::Arguments(int argc, char * argv[]):
       ParallelContext::abort(0);
     } else if (arg == "-i" || arg == "--input-gene-trees") {
       inputGeneTreeFile = std::string(argv[++i]);
-    } else if (arg == "-s" || arg == "--starting-species-tree") {
-      startingSpeciesTree = std::string(argv[++i]);
+    } else if (arg == "-r" || arg == "--random-starting-trees") {
+      randomStartingTrees = atoi(argv[++i]);
     } else if (arg == "-p" || arg == "--prefix") {
       prefix = std::string(argv[++i]);
     } else if (arg == "-m" || arg == "--gene-species-mapping") {

@@ -11,7 +11,7 @@ public:
       const BoolMatrix &perFamilyCoverage,
       const std::vector<DistanceMatrix> &distanceMatrices);
   virtual ~AsteroidOptimizer() {}
-  void optimize();
+  double optimize();
 private:
   double eval(PLLUnrootedTree &tree);
   bool computeAndApplyBestSPR();
