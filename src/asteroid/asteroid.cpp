@@ -186,36 +186,25 @@ void computeGeneDistances(const Arguments &arg,
   IDParam idParams;
   idParams.minBL = arg.minBL;
  
-  if (!arg.noCorrection) {
-    fillDistanceMatricesAsteroid(geneTrees, 
-        speciesNumber, 
-        idParams, 
-        distanceMatrices);
-  } else {
-    fillDistanceMatricesAstrid(geneTrees, 
-        speciesNumber, 
-        idParams, 
-        distanceMatrices);
-  }
+  fillDistanceMatricesAsteroid(geneTrees, 
+      speciesNumber, 
+      idParams, 
+      distanceMatrices);
 }
   
-void computeFamilyCoverage(const Arguments &arg,
+void computeFamilyCoverage(
     GeneTrees &geneTrees,
     unsigned int speciesNumber,
     BoolMatrix &perFamilyCoverage)
 {
   Logger::timed << "Computing coverage..." << std::endl;
-  if (!arg.noCorrection) {
-    perFamilyCoverage = BoolMatrix(geneTrees.size(),
-        std::vector<bool>(speciesNumber, false));
-    for (unsigned int k = 0; k < geneTrees.size(); ++k) {
-      for (auto geneLeaf: geneTrees[k]->getLeaves()) {
-        auto spid = reinterpret_cast<intptr_t>(geneLeaf->data);
-        perFamilyCoverage[k][spid] = true;
-      }
+  perFamilyCoverage = BoolMatrix(geneTrees.size(),
+      std::vector<bool>(speciesNumber, false));
+  for (unsigned int k = 0; k < geneTrees.size(); ++k) {
+    for (auto geneLeaf: geneTrees[k]->getLeaves()) {
+      auto spid = reinterpret_cast<intptr_t>(geneLeaf->data);
+      perFamilyCoverage[k][spid] = true;
     }
-  } else {
-    perFamilyCoverage.push_back(std::vector<bool>(speciesNumber, true));
   }
 } 
 
@@ -230,10 +219,70 @@ void getPerCoreGeneTrees(GeneTrees &geneTrees,
     perCoreGeneTrees.push_back(geneTrees[k]);
   }
 }
+    
+void getDataNoCorrection(
+        const std::vector<DistanceMatrix> &distanceMatrices,
+        std::vector<DistanceMatrix> &astridDistanceMatrices,
+        BoolMatrix & astridPerFamilyCoverage)
+{
+  unsigned int speciesNumber = distanceMatrices[0].size();
+  unsigned int K = distanceMatrices.size(); 
+  DistanceMatrix astridDistanceMatrix = initDistancetMatrix(speciesNumber,
+      speciesNumber,
+      0.0);
+  DistanceMatrix denominator = initDistancetMatrix(speciesNumber,
+      speciesNumber,
+      0.0);
+  for (unsigned int i = 0; i < speciesNumber; ++i) {
+    for (unsigned int j = 0; j < speciesNumber; ++j) {
+      for (unsigned int k = 0; k < K; ++k) {
+        if (std::numeric_limits<double>::infinity() 
+            != distanceMatrices[k][i][j]) {
+          astridDistanceMatrix[i][j] += distanceMatrices[k][i][j];
+          denominator[i][j] += 1.0; 
+        }
+      }
+      ParallelContext::sumDouble(astridDistanceMatrix[i][j]);
+      ParallelContext::sumDouble(denominator[i][j]);
+      if (denominator[i][j] != 0.0) {
+        astridDistanceMatrix[i][j] /= denominator[i][j];
+      }
+    }
+  }
+  astridDistanceMatrices.push_back(astridDistanceMatrix);
+  std::vector<bool> astridCoverage(speciesNumber, true);
+  astridPerFamilyCoverage.push_back(astridCoverage);
+}
+
+double optimize(PLLUnrootedTree &speciesTree,
+    const std::vector<DistanceMatrix>  &asteroidDistanceMatrices,
+    const BoolMatrix &asteroidPerFamilyCoverage,
+    bool noCorrection)
+{
+  const std::vector<DistanceMatrix> *distanceMatrices = nullptr;
+  const BoolMatrix *perFamilyCoverage = nullptr;
+  std::vector<DistanceMatrix> astridDistanceMatrices;
+  BoolMatrix astridPerFamilyCoverage;
+  if (noCorrection) {
+    getDataNoCorrection(asteroidDistanceMatrices,
+        astridDistanceMatrices,
+        astridPerFamilyCoverage);
+    perFamilyCoverage = &astridPerFamilyCoverage;
+    distanceMatrices = &astridDistanceMatrices;
+  } else {
+    perFamilyCoverage = &asteroidPerFamilyCoverage;
+    distanceMatrices = &asteroidDistanceMatrices;
+  }
+  AsteroidOptimizer optimizer(speciesTree,
+      *perFamilyCoverage,
+      *distanceMatrices);
+  return optimizer.optimize();
+}
 
 ScoredTrees search(SpeciesTrees &startingSpeciesTrees,
-  const std::vector<DistanceMatrix> &distanceMatrices,
-  const BoolMatrix &perFamilyCoverage,
+  const std::vector<DistanceMatrix> &asteroidDistanceMatrices,
+  const BoolMatrix &asteroidPerFamilyCoverage,
+  bool noCorrection,
   int samples = -1)
 {
   ScoredTrees scoredTrees;
@@ -243,22 +292,23 @@ ScoredTrees search(SpeciesTrees &startingSpeciesTrees,
     ScoredTree st;
     st.tree = speciesTree;
     if (samples == -1) {
-      AsteroidOptimizer optimizer(*speciesTree,
-          perFamilyCoverage,
-          distanceMatrices);
-      st.score = optimizer.optimize();
+      st.score = optimize(*speciesTree, 
+          asteroidDistanceMatrices, 
+          asteroidPerFamilyCoverage,
+          noCorrection);
     } else {
       std::vector<DistanceMatrix> sampledDistanceMatrices;
       BoolMatrix sampledPerFamilyCoverage;
       for (int i = 0; i < samples; ++i) {
         unsigned int s = Random::getInt(samples);
-        sampledDistanceMatrices.push_back(distanceMatrices[s]);
-        sampledPerFamilyCoverage.push_back(perFamilyCoverage[s]);
+        sampledDistanceMatrices.push_back(asteroidDistanceMatrices[s]);
+        sampledPerFamilyCoverage.push_back(asteroidPerFamilyCoverage[s]);
       }
-      AsteroidOptimizer optimizer(*speciesTree,
+      st.score = optimize(*speciesTree,
+          sampledDistanceMatrices,
           sampledPerFamilyCoverage,
-          sampledDistanceMatrices);
-      st.score = optimizer.optimize();
+          noCorrection);
+
     }
     Logger::timed << "Starting tree search... " << std::endl;
     scoredTrees.push_back(st);
@@ -312,8 +362,10 @@ int main(int argc, char * argv[])
 
   getPerCoreGeneTrees(geneTrees, perCoreGeneTrees);
   applyMappings(mappings, speciesToSpid, perCoreGeneTrees); 
-  computeFamilyCoverage(arg, perCoreGeneTrees, speciesNumber, perFamilyCoverage);
+  computeFamilyCoverage(perCoreGeneTrees, speciesNumber, perFamilyCoverage);
   computeGeneDistances(arg, perCoreGeneTrees, speciesNumber, distanceMatrices); 
+  
+   
 
   SpeciesTrees startingSpeciesTrees =
     generateRandomSpeciesTrees(speciesLabels, 
@@ -321,7 +373,8 @@ int main(int argc, char * argv[])
         arg.randomStartingTrees);
   ScoredTrees scoredTrees = search(startingSpeciesTrees,
       distanceMatrices,
-      perFamilyCoverage);
+      perFamilyCoverage,
+      arg.noCorrection);
 
   std::string outputSpeciesTreeFile = arg.prefix + ".bestTree.newick";
   std::string outputSpeciesTreesFile = arg.prefix + ".allTrees.newick";
@@ -347,6 +400,7 @@ int main(int argc, char * argv[])
     ScoredTrees finalBSTrees = search(startingBSTrees,
         distanceMatrices,
         perFamilyCoverage,
+        arg.noCorrection,
         perCoreGeneTrees.size());
     std::string bsTreesFile = arg.prefix + ".bsTrees.newick";
     ParallelOfstream bsOs(bsTreesFile);
