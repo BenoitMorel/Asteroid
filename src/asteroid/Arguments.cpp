@@ -7,6 +7,7 @@ Arguments::Arguments(int argc, char * argv[]):
   argc(argc),
   argv(argv),
   randomStartingTrees(1),
+  bootstrapTrees(0),
   seed(1),
   noCorrection(false),
   minBL(-1.0)
@@ -24,6 +25,8 @@ Arguments::Arguments(int argc, char * argv[]):
       inputGeneTreeFile = std::string(argv[++i]);
     } else if (arg == "-r" || arg == "--random-starting-trees") {
       randomStartingTrees = atoi(argv[++i]);
+    } else if (arg == "-b" || arg == "--bs-trees") {
+      bootstrapTrees = atoi(argv[++i]);
     } else if (arg == "-p" || arg == "--prefix") {
       prefix = std::string(argv[++i]);
     } else if (arg == "-m" || arg == "--gene-species-mapping") {

@@ -6,6 +6,7 @@ public:
   Random() = delete;
   static void setSeed(unsigned int seed);
   static int getInt(); 
+  static int getInt(int max); 
   static double getProba();
 
 private:

@@ -5,8 +5,10 @@ set(asteroid-core_SOURCES
   IO/Logger.cpp
   IO/GeneSpeciesMapping.cpp
   IO/ParallelOfstream.cpp
+  maths/bitvector.cpp
   maths/Random.cpp
   trees/PLLUnrootedTree.cpp
+  trees/SplitHashtable.cpp
   parallelization/ParallelContext.cpp
   )
 

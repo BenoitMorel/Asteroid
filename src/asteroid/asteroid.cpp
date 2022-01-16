@@ -7,6 +7,7 @@
 #include <maths/Random.hpp>
 #include "Arguments.hpp"
 #include <trees/PLLUnrootedTree.hpp>
+#include <trees/SplitHashtable.hpp>
 #include <DistanceMethods/InternodeDistance.hpp>
 #include <memory>
 #include <set>
@@ -232,19 +233,34 @@ void getPerCoreGeneTrees(GeneTrees &geneTrees,
 
 ScoredTrees search(SpeciesTrees &startingSpeciesTrees,
   const std::vector<DistanceMatrix> &distanceMatrices,
-  const BoolMatrix &perFamilyCoverage)
+  const BoolMatrix &perFamilyCoverage,
+  int samples = -1)
 {
   ScoredTrees scoredTrees;
   // Perform search
   for (auto speciesTree: startingSpeciesTrees) {
     Logger::timed << "Initializing optimizer... " << std::endl;
-    AsteroidOptimizer optimizer(*speciesTree,
-        perFamilyCoverage,
-        distanceMatrices);
-    Logger::timed << "Starting tree search... " << std::endl;
     ScoredTree st;
     st.tree = speciesTree;
-    st.score = optimizer.optimize();
+    if (samples == -1) {
+      AsteroidOptimizer optimizer(*speciesTree,
+          perFamilyCoverage,
+          distanceMatrices);
+      st.score = optimizer.optimize();
+    } else {
+      std::vector<DistanceMatrix> sampledDistanceMatrices;
+      BoolMatrix sampledPerFamilyCoverage;
+      for (int i = 0; i < samples; ++i) {
+        unsigned int s = Random::getInt(samples);
+        sampledDistanceMatrices.push_back(distanceMatrices[s]);
+        sampledPerFamilyCoverage.push_back(perFamilyCoverage[s]);
+      }
+      AsteroidOptimizer optimizer(*speciesTree,
+          sampledPerFamilyCoverage,
+          sampledDistanceMatrices);
+      st.score = optimizer.optimize();
+    }
+    Logger::timed << "Starting tree search... " << std::endl;
     scoredTrees.push_back(st);
   }
   std::sort(scoredTrees.begin(), scoredTrees.end());
@@ -262,6 +278,19 @@ TreePtr generateRandomSpeciesTree(std::unordered_set<std::string> &labels,
     leaf->data = reinterpret_cast<void*>(spid);
   }
   return speciesTree;
+}
+  
+Trees generateRandomSpeciesTrees(std::unordered_set<std::string> &labels,
+    const StringToUint &speciesToSpid,
+    unsigned int number)
+{
+  Trees trees;
+  for (unsigned int i = 0; i < number; ++i) {
+    auto speciesTree = generateRandomSpeciesTree(labels, 
+        speciesToSpid);
+    trees.push_back(speciesTree);
+  } 
+  return trees;
 }
 
 int main(int argc, char * argv[])
@@ -286,12 +315,10 @@ int main(int argc, char * argv[])
   computeFamilyCoverage(arg, perCoreGeneTrees, speciesNumber, perFamilyCoverage);
   computeGeneDistances(arg, perCoreGeneTrees, speciesNumber, distanceMatrices); 
 
-  SpeciesTrees startingSpeciesTrees;
-  for (unsigned int i = 0; i < arg.randomStartingTrees; ++i) {
-    auto speciesTree = generateRandomSpeciesTree(speciesLabels, 
-        speciesToSpid);
-    startingSpeciesTrees.push_back(speciesTree);
-  }
+  SpeciesTrees startingSpeciesTrees =
+    generateRandomSpeciesTrees(speciesLabels, 
+        speciesToSpid,
+        arg.randomStartingTrees);
   ScoredTrees scoredTrees = search(startingSpeciesTrees,
       distanceMatrices,
       perFamilyCoverage);
@@ -301,7 +328,8 @@ int main(int argc, char * argv[])
   std::string outputScoresFile = arg.prefix + ".scores.txt"; 
   Logger::timed << "Final tree scores: " << std::endl;
   Logger::timed << "Printing the best tree into " << outputSpeciesTreeFile << std::endl;
-  scoredTrees[0].tree->save(outputSpeciesTreeFile);
+  auto & bestTree = *scoredTrees[0].tree;
+  bestTree.save(outputSpeciesTreeFile);
   ParallelOfstream treesOs(outputSpeciesTreesFile);
   ParallelOfstream scoresOs(outputScoresFile);
   for (const auto &st: scoredTrees) {
@@ -311,7 +339,27 @@ int main(int argc, char * argv[])
   }
 
 
+  if (arg.bootstrapTrees > 0) {
+    SpeciesTrees startingBSTrees =
+      generateRandomSpeciesTrees(speciesLabels, 
+          speciesToSpid,
+          arg.bootstrapTrees);
+    ScoredTrees finalBSTrees = search(startingBSTrees,
+        distanceMatrices,
+        perFamilyCoverage,
+        perCoreGeneTrees.size());
+    std::string bsTreesFile = arg.prefix + ".bsTrees.newick";
+    ParallelOfstream bsOs(bsTreesFile);
+    SplitHashtable splits;
+    for (const auto &st: finalBSTrees) {
+      bsOs << st.tree->getNewickString() << std::endl;
+      splits.addTree(*st.tree);
+    }
+    splits.computeSupportValues(bestTree);
+    bestTree.save(outputSpeciesTreeFile);
+  } 
   
+
   close();
   return 0;
 

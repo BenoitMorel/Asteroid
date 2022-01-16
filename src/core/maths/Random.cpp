@@ -13,6 +13,11 @@ int Random::getInt()
   return _unii(_rng);
 }
 
+int Random::getInt(int max)
+{
+  return getInt() % max;
+}
+
 double Random::getProba() 
 {
   return _uniproba(_rng);
