@@ -78,7 +78,7 @@ bool AsteroidOptimizer::computeAndApplyBestSPR()
   }
   bool better = false;
   unsigned int appliedMoves = 0;
-  unsigned int maxAppliedMoves = 99999; // no max
+  unsigned int maxAppliedMoves = 9999999; // no max
   corax_tree_rollback_t emptyRollback;
   std::vector<corax_tree_rollback_t> rollbacks;
   std::vector<double> hackScore;

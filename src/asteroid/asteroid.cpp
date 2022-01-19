@@ -273,9 +273,11 @@ double optimize(PLLUnrootedTree &speciesTree,
     perFamilyCoverage = &asteroidPerFamilyCoverage;
     distanceMatrices = &asteroidDistanceMatrices;
   }
+  Logger::timed << "Initializing optimizer... " << std::endl;
   AsteroidOptimizer optimizer(speciesTree,
       *perFamilyCoverage,
       *distanceMatrices);
+  Logger::timed << "Starting tree search... " << std::endl;
   return optimizer.optimize();
 }
 
@@ -288,7 +290,6 @@ ScoredTrees search(SpeciesTrees &startingSpeciesTrees,
   ScoredTrees scoredTrees;
   // Perform search
   for (auto speciesTree: startingSpeciesTrees) {
-    Logger::timed << "Initializing optimizer... " << std::endl;
     ScoredTree st;
     st.tree = speciesTree;
     if (samples == -1) {
@@ -310,7 +311,6 @@ ScoredTrees search(SpeciesTrees &startingSpeciesTrees,
           noCorrection);
 
     }
-    Logger::timed << "Starting tree search... " << std::endl;
     scoredTrees.push_back(st);
   }
   std::sort(scoredTrees.begin(), scoredTrees.end());

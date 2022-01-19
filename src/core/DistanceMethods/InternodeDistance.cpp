@@ -1,6 +1,6 @@
 #include "InternodeDistance.hpp"
 #include <trees/PLLUnrootedTree.hpp>
-
+#include <IO/Logger.hpp>
 
 void computeFromGeneTreeAux(corax_unode_t *node,
     const IDParam &params,
@@ -14,12 +14,15 @@ void computeFromGeneTreeAux(corax_unode_t *node,
     distances[spid] = std::min(d, distances[spid]); 
     return;
   }
-  if (node->length >= params.minBL // contract min branch length
-      || !node->back->next) { // always add one at first level of recursion
+  bool isPolytomy = false;
+  isPolytomy |= node->length  <= params.minBL;
+  isPolytomy &= (nullptr != node->back->next);
+  if (!isPolytomy) {
     d += 1.0;
   }
-  computeFromGeneTreeAux(node->next->back, params, d, distances);
-  computeFromGeneTreeAux(node->next->next->back, params, d, distances);
+  for (auto n = node->next; n != node; n = n->next) {
+    computeFromGeneTreeAux(n->back, params, d, distances);
+  }
 }
 
 void InternodeDistance::computeFromGeneTree(PLLUnrootedTree &geneTree,

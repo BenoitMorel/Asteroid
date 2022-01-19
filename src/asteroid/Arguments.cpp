@@ -35,7 +35,7 @@ Arguments::Arguments(int argc, char * argv[]):
       seed = atoi(argv[++i]);
     } else if (arg == "-n" || arg == "--no-correction") {
       noCorrection = true;
-    } else if (arg == "-b" || arg == "--min-bl") {
+    } else if (arg == "--min-bl") {
       minBL = atof(argv[++i]);
     } else {
       Logger::info << "Unrecognized argument " << arg << std::endl;
