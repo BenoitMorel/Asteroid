@@ -37,6 +37,13 @@ void InternodeDistance::computeFromGeneTree(PLLUnrootedTree &geneTree,
         0.0,
         distanceMatrix[spid]);
   }
+  /*
+  for (unsigned int i = 0; i < distanceMatrix.size(); ++i) {
+    for (unsigned int j = 0; j < i; ++j) {
+      assert(distanceMatrix[i][j] == distanceMatrix[j][i]);
+    }
+  }
+  */
 }
 
 

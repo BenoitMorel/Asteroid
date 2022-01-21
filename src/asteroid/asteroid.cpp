@@ -223,9 +223,10 @@ void getPerCoreGeneTrees(GeneTrees &geneTrees,
 void getDataNoCorrection(
         const std::vector<DistanceMatrix> &distanceMatrices,
         std::vector<DistanceMatrix> &astridDistanceMatrices,
-        BoolMatrix & astridPerFamilyCoverage)
+        BoolMatrix & astridPerFamilyCoverage,
+        unsigned int speciesNumber)
 {
-  unsigned int speciesNumber = distanceMatrices[0].size();
+
   unsigned int K = distanceMatrices.size(); 
   DistanceMatrix astridDistanceMatrix = initDistancetMatrix(speciesNumber,
       speciesNumber,
@@ -266,7 +267,8 @@ double optimize(PLLUnrootedTree &speciesTree,
   if (noCorrection) {
     getDataNoCorrection(asteroidDistanceMatrices,
         astridDistanceMatrices,
-        astridPerFamilyCoverage);
+        astridPerFamilyCoverage,
+        speciesTree.getLeavesNumber());
     perFamilyCoverage = &astridPerFamilyCoverage;
     distanceMatrices = &astridDistanceMatrices;
   } else {
