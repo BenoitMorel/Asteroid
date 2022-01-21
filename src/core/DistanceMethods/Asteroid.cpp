@@ -128,6 +128,7 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
   _K = geneDistanceMatrices.size();
   _N = speciesTree.getDirectedNodesNumber(); 
   _speciesNumber = speciesTree.getLeavesNumber();
+  ParallelContext::barrier();
   for (unsigned int i = 0; i < _N + 3; ++i) {
     _pows.push_back(std::pow(0.5, i));
   }
@@ -136,8 +137,9 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
   _subBMEs = std::vector<double>(_N * _N * _K, 
       std::numeric_limits<double>::infinity());
   // check integer overflow
-  assert(_subBMEs.size() / _K == _N * _N);
+  assert(!_K || _subBMEs.size() / _K == _N * _N);
   for (auto sp1: speciesTree.getLeaves()) {
+  ParallelContext::barrier();
     auto i1 = sp1->node_index;
     for (auto sp2: speciesTree.getLeaves()) {
       auto i2 = sp2->node_index;
@@ -146,6 +148,7 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
       }
     }
   }
+  ParallelContext::barrier();
 }
 
 
