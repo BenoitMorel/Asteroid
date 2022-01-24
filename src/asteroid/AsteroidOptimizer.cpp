@@ -75,6 +75,10 @@ bool AsteroidOptimizer::computeAndApplyBestSPR()
     _asteroid.getBestSPR(_speciesTree, 
         99999999,
         bestMoves);
+    if (bestMoves.size() == 0 || bestMoves[0].score < epsilon) {
+      Logger::info << "Global search failed, stopping" << std::endl;
+      return false;
+    }
   }
   bool better = false;
   unsigned int appliedMoves = 0;
@@ -85,7 +89,8 @@ bool AsteroidOptimizer::computeAndApplyBestSPR()
   std::unordered_set<corax_unode_t *> involved;
   double expectedDiff = 0.0;
   for (auto move: bestMoves) {
-    if (isSPRMoveValid(_speciesTree, move.pruneNode->back, move.regraftNode) 
+    if (move.score > epsilon 
+        && isSPRMoveValid(_speciesTree, move.pruneNode->back, move.regraftNode) 
         && !isInScores(hackScore, move.score)
         && !wasInvolved(move.pruneNode, involved)
         && !wasInvolved(move.regraftNode, involved)
@@ -112,12 +117,13 @@ bool AsteroidOptimizer::computeAndApplyBestSPR()
   if (appliedMoves) {
     Logger::info << "Expected: " << expectedDiff << " real:" << diff << " highest: " << bestMoves[0].score << std::endl;
   }
-  if (newScore < _lastScore) {
+  if (newScore < _lastScore + epsilon) {
     Logger::info << "New score " << newScore << " worse than last score " << _lastScore << std::endl;
     for (int i = rollbacks.size() - 1; i >= 1; --i) {
       corax_tree_rollback(&rollbacks[i]);
     }
     newScore = -_asteroid.computeBME(_speciesTree);
+    assert(newScore > _lastScore);
   }
   _lastScore = newScore;
   return better;

@@ -73,7 +73,7 @@ void fillDistanceMatricesAstrid(GeneTrees &geneTrees,
       speciesNumber, 
       0.0);
   for (unsigned int k = 0; k < geneTrees.size(); ++k) {
-  DistanceMatrix temp = initDistancetMatrix(speciesNumber,
+    DistanceMatrix temp = initDistancetMatrix(speciesNumber,
       speciesNumber, 
       std::numeric_limits<double>::infinity());
     auto &geneTree = *geneTrees[k];
@@ -97,19 +97,22 @@ void fillDistanceMatricesAstrid(GeneTrees &geneTrees,
         Logger::info << "Warning: missing entry in the distance matrix" << std::endl;
         
       } else {
-        sum[i][j] /= denominator[i][j];
+     //   sum[i][j] /= denominator[i][j];
       }
     }
   }
   distanceMatrices.push_back(sum);
 }
 
+
+#undef ASTRID_WEIGHT
 void fillDistanceMatricesAsteroid(GeneTrees &geneTrees, 
     unsigned int speciesNumber, 
     const IDParam &params,
     std::vector<DistanceMatrix> &distanceMatrices)
 {
   distanceMatrices.resize(geneTrees.size());
+#ifndef ASTRID_WEIGHT
   for (unsigned int k = 0; k < geneTrees.size(); ++k) {
     auto &d = distanceMatrices[k];
     auto &geneTree = *geneTrees[k];
@@ -118,6 +121,36 @@ void fillDistanceMatricesAsteroid(GeneTrees &geneTrees,
         std::numeric_limits<double>::infinity());
     InternodeDistance::computeFromGeneTree(geneTree, d, params);
   }
+#else
+  DistanceMatrix denominator = initDistancetMatrix(speciesNumber,
+      speciesNumber, 
+      0.0);
+  for (unsigned int k = 0; k < geneTrees.size(); ++k) {
+    auto &d = distanceMatrices[k];
+    auto &geneTree = *geneTrees[k];
+    d = initDistancetMatrix(speciesNumber,
+        speciesNumber,
+        std::numeric_limits<double>::infinity());
+    InternodeDistance::computeFromGeneTree(geneTree, d, params);
+    for (unsigned int i = 0; i < speciesNumber; ++i) {
+      for (unsigned int j = 0; j < speciesNumber; ++j) {
+        if (d[i][j] != std::numeric_limits<double>::infinity()) {
+          denominator[i][j] += 1.0;
+        }
+      }
+    }
+  }
+  for (unsigned int i = 0; i < speciesNumber; ++i) {
+    for (unsigned int j = 0; j < speciesNumber; ++j) {
+      if (denominator[i][j] == 0.0) {
+        continue;
+      }
+      for (unsigned int k = 0; k < geneTrees.size(); ++k) {
+        distanceMatrices[k][i][j] /= denominator[i][j];
+      }
+    }
+  }
+#endif
 }
 
 void init(Arguments &arg)
