@@ -54,6 +54,7 @@ public:
 
 private:
   const UIntMatrix &_gidToSpid;
+  UIntMatrix _spidToGid;
   // _getBestSPRRecMissing[k][i][j] is the distance
   // between species i and j for the gene family k
   // this value is only valid if no inf 

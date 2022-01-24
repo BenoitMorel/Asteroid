@@ -128,10 +128,17 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
   _geneDistanceMatrices(geneDistanceMatrices),
   _perFamilyCoverage(perFamilyCoverage)
 {
+  ParallelContext::barrier();
   _K = geneDistanceMatrices.size();
   _N = speciesTree.getDirectedNodesNumber(); 
   _speciesNumber = speciesTree.getLeavesNumber();
-  ParallelContext::barrier();
+  _spidToGid.resize(_K);
+  for (unsigned int k = 0; k < _K; ++k) {
+    _spidToGid[k].resize(_N);
+    for (unsigned int gid = 0; gid < _gidToSpid[k].size(); ++gid) {
+      _spidToGid[k][_gidToSpid[k][gid]] = gid;
+    }
+  }
   for (unsigned int i = 0; i < _N + 3; ++i) {
     _pows.push_back(std::pow(0.5, i));
   }
@@ -156,15 +163,20 @@ double Asteroid::computeBME(const PLLUnrootedTree &speciesTree)
 {
   double res = 0.0;
   std::vector<std::shared_ptr<PLLUnrootedTree> > prunedSpeciesTrees; 
-HERE: NEED MAPPING SPECIES_LABEL -> GID
-  StringToUint speciesLabelToIndex;
+  StringToUint speciesLabelToSpid;
   for (auto leaf: speciesTree.getLeaves()) {
-    speciesLabelToIndex.insert({std::string(leaf->label), leaf->node_index});
+    speciesLabelToSpid.insert({std::string(leaf->label), leaf->node_index});
   }
   for (unsigned int k = 0; k < _K; ++k) {
     prunedSpeciesTrees.push_back(
         speciesTree.getInducedTree(_perFamilyCoverage[k]));
-    prunedSpeciesTrees[k]->reindexLeaves(speciesLabelToIndex);
+    StringToUint labelToGid;
+    for (auto leaf: prunedSpeciesTrees[k]->getLeaves()) {
+      auto spid = speciesLabelToSpid[leaf->label];
+      auto gid = _spidToGid[k][spid];
+      labelToGid.insert({std::string(leaf->label), gid});
+    }
+    prunedSpeciesTrees[k]->reindexLeaves(labelToGid);
     InternodeDistance::computeFromSpeciesTree(*prunedSpeciesTrees[k],
          _prunedSpeciesMatrices[k]);
   }
@@ -178,7 +190,7 @@ HERE: NEED MAPPING SPECIES_LABEL -> GID
     }
   }
   ParallelContext::sumDouble(res);
-  //computeSubBMEsPrune(speciesTree);
+  computeSubBMEsPrune(speciesTree);
   return res;
 }
 
