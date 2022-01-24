@@ -826,4 +826,59 @@ void PLLUnrootedTree::reindexLeaves(const StringToUint &labelToIndex)
     _tree->nodes[spid] = leaf;
   }
 }
+ 
+static std::string getInducedNewickRec(corax_unode_t *node,
+    const std::vector<bool> &coverage)
+{
+  if (!node->next) {
+    if (coverage[node->node_index]) {
+      return std::string(node->label);
+    } else {
+      return std::string();
+    }
+  }
+  auto strLeft = getInducedNewickRec(node->next->back, coverage);
+  auto strRight = getInducedNewickRec(node->next->next->back, coverage);
+  if (!strLeft.size() && !strRight.size()) {
+    return std::string();
+  } 
+  if (!strLeft.size()) {
+    return strRight;
+  }
+  if (!strRight.size()) {
+    return strLeft;
+  }
+  std::string res;
+  res += "(";
+  res += strLeft;
+  res += ",";
+  res += strRight;
+  res += ")";
+  return res;
+}
+
+std::string PLLUnrootedTree::getInducedNewick(const std::vector<bool> &coverage) const
+{
+  std::stringstream ss;
+  unsigned int first = 0;
+  for (; first < coverage.size(); ++first) {
+    if (coverage[first]) {
+      break;
+    }
+  }
+  assert(first != coverage.size());
+  auto firstLeaf = getNode(first);
+  ss << "(";
+  ss << firstLeaf->label;
+  ss << ",";
+  ss << getInducedNewickRec(firstLeaf->back, coverage);
+  ss << ");";
+  return ss.str();
+}
+
+std::shared_ptr<PLLUnrootedTree> PLLUnrootedTree::getInducedTree(const std::vector<bool> &coverage) const
+{
+  auto str = getInducedNewick(coverage);
+  return std::make_shared<PLLUnrootedTree>(str, false);
+}
 

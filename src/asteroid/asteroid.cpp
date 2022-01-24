@@ -391,8 +391,8 @@ int main(int argc, char * argv[])
 
   getPerCoreGeneTrees(geneTrees, perCoreGeneTrees);
   fillGidToSpid(perCoreGeneTrees, mappings, speciesToSpid, gidToSpid);
-  
   computeFamilyCoverage(perCoreGeneTrees, speciesNumber, gidToSpid, perFamilyCoverage);
+  
   computeGeneDistances(arg, perCoreGeneTrees, distanceMatrices); 
   
    

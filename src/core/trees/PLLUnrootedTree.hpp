@@ -36,6 +36,8 @@ public:
 
   static std::unique_ptr<PLLUnrootedTree> buildFromStrOrFile(const std::string &strOrFile);
 
+  std::shared_ptr<PLLUnrootedTree> getInducedTree(const std::vector<bool> &okNodeIndices) const;
+
   /**
    *  Construct a random tree from a set of taxa labels
    */
@@ -91,6 +93,8 @@ public:
       corax_unode_t *root = nullptr, 
       bool rooted = false);
   static std::string getSubtreeString(corax_unode_t *subtree, UnodePrinter f = defaultUnodePrinter);
+  
+  std::string getInducedNewick(const std::vector<bool> &coverage) const;
 
   /**
    * Replace null branch lengths with minBL

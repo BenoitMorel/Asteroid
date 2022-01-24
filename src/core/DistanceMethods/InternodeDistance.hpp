@@ -24,6 +24,9 @@ public:
     DistanceMatrix &distanceMatrix,
     const IDParam &param);
 
+  static void computeFromSpeciesTree(PLLUnrootedTree &geneTree,
+    DistanceMatrix &distanceMatrix);
+
 };
 
 

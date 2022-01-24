@@ -37,13 +37,31 @@ void InternodeDistance::computeFromGeneTree(PLLUnrootedTree &geneTree,
         0.0,
         distanceMatrix[spid]);
   }
-  /*
-  for (unsigned int i = 0; i < distanceMatrix.size(); ++i) {
-    for (unsigned int j = 0; j < i; ++j) {
-      assert(distanceMatrix[i][j] == distanceMatrix[j][i]);
-    }
+}
+
+
+void computeFromSpeciesTreeAux(corax_unode_t *node,
+    double d,
+    std::vector<double> &distances)
+{
+  d += 1.0;
+  if (!node->next) {
+    distances[node->node_index] = d; 
+    return;
   }
-  */
+  for (auto n = node->next; n != node; n = n->next) {
+    computeFromSpeciesTreeAux(n->back, d, distances);
+  }
+}
+
+void InternodeDistance::computeFromSpeciesTree(PLLUnrootedTree &speciesTree,
+    DistanceMatrix &distanceMatrix)
+{
+  for (auto leaf: speciesTree.getLeaves()) {
+    computeFromSpeciesTreeAux(leaf->back,
+        0.0,
+        distanceMatrix[leaf->node_index]);
+  }
 }
 
 

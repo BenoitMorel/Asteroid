@@ -2,6 +2,7 @@
 #include <IO/Logger.hpp>
 #include <limits>
 #include <algorithm>
+#include <DistanceMethods/InternodeDistance.hpp>
 
 using DistanceVectorMatrix = std::vector<DistanceMatrix>;
 
@@ -134,11 +135,11 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
   for (unsigned int i = 0; i < _N + 3; ++i) {
     _pows.push_back(std::pow(0.5, i));
   }
-  _prunedSpeciesMatrices = std::vector<DistanceMatrix>(
-      _K, getNullMatrix(_speciesNumber));
+  _prunedSpeciesMatrices = std::vector<DistanceMatrix>(_K);
   _subBMEs.resize(_K);
   for (unsigned int k = 0; k < _K; ++k) {
     auto geneNumbers = gidToSpid[k].size();
+    _prunedSpeciesMatrices[k] = getNullMatrix(geneNumbers);
     _subBMEs[k] = std::vector<double>(geneNumbers * geneNumbers, 
       std::numeric_limits<double>::infinity());
     for (unsigned int i = 0; i < geneNumbers; ++i) {
@@ -153,27 +154,26 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
 
 double Asteroid::computeBME(const PLLUnrootedTree &speciesTree)
 {
-  DistanceMatrix speciesDistanceMatrix = getNullMatrix(_speciesNumber);
-  fillSpeciesDistances(speciesTree, 
-      speciesDistanceMatrix);
   double res = 0.0;
-  // O(kn^2)
-  for (unsigned int k = 0; k < _K; ++k) {
-    // O(n^2)
-    getPrunedSpeciesMatrix(speciesTree, 
-          _perFamilyCoverage[k],
-          _prunedSpeciesMatrices[k]);    
+  std::vector<std::shared_ptr<PLLUnrootedTree> > prunedSpeciesTrees; 
+HERE: NEED MAPPING SPECIES_LABEL -> GID
+  StringToUint speciesLabelToIndex;
+  for (auto leaf: speciesTree.getLeaves()) {
+    speciesLabelToIndex.insert({std::string(leaf->label), leaf->node_index});
   }
-  // O(kn^2)
+  for (unsigned int k = 0; k < _K; ++k) {
+    prunedSpeciesTrees.push_back(
+        speciesTree.getInducedTree(_perFamilyCoverage[k]));
+    prunedSpeciesTrees[k]->reindexLeaves(speciesLabelToIndex);
+    InternodeDistance::computeFromSpeciesTree(*prunedSpeciesTrees[k],
+         _prunedSpeciesMatrices[k]);
+  }
   for (unsigned k = 0; k < _geneDistanceMatrices.size(); ++k) {
     auto geneNumbers = _gidToSpid[k].size();
     for (unsigned int i = 0; i < geneNumbers; ++i) {
       for (unsigned int j = 0; j < i; ++j) {
-        //auto v = getCell(i, j, k);
         auto v = _geneDistanceMatrices[k][i][j];
-        auto spidi = _gidToSpid[k][i];
-        auto spidj = _gidToSpid[k][j];
-        res += v * _pows[_prunedSpeciesMatrices[k][spidi][spidj]];
+        res += v * _pows[_prunedSpeciesMatrices[k][i][j]];
       }
     }
   }
