@@ -68,6 +68,7 @@ private:
   BoolMatrix _perFamilyCoverage;
   // _prunedSpeciesMatrices[k] is the internode distance for the
   // species tree induced by the family k
+  std::vector<std::shared_ptr<PLLUnrootedTree> > _prunedSpeciesTrees; 
   std::vector<DistanceMatrix> _prunedSpeciesMatrices;
 
   std::vector< std::vector<double> > _subBMEs;

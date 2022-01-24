@@ -146,8 +146,9 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
   _subBMEs.resize(_K);
   for (unsigned int k = 0; k < _K; ++k) {
     auto geneNumbers = gidToSpid[k].size();
+    auto directedGeneNumbers = geneNumbers * 4 - 6;
     _prunedSpeciesMatrices[k] = getNullMatrix(geneNumbers);
-    _subBMEs[k] = std::vector<double>(geneNumbers * geneNumbers, 
+    _subBMEs[k] = std::vector<double>(directedGeneNumbers * directedGeneNumbers, 
       std::numeric_limits<double>::infinity());
     for (unsigned int i = 0; i < geneNumbers; ++i) {
       for (unsigned int j = 0; j < geneNumbers; ++j) {
@@ -162,22 +163,22 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
 double Asteroid::computeBME(const PLLUnrootedTree &speciesTree)
 {
   double res = 0.0;
-  std::vector<std::shared_ptr<PLLUnrootedTree> > prunedSpeciesTrees; 
+  _prunedSpeciesTrees.clear();
   StringToUint speciesLabelToSpid;
   for (auto leaf: speciesTree.getLeaves()) {
     speciesLabelToSpid.insert({std::string(leaf->label), leaf->node_index});
   }
   for (unsigned int k = 0; k < _K; ++k) {
-    prunedSpeciesTrees.push_back(
+    _prunedSpeciesTrees.push_back(
         speciesTree.getInducedTree(_perFamilyCoverage[k]));
     StringToUint labelToGid;
-    for (auto leaf: prunedSpeciesTrees[k]->getLeaves()) {
+    for (auto leaf: _prunedSpeciesTrees[k]->getLeaves()) {
       auto spid = speciesLabelToSpid[leaf->label];
       auto gid = _spidToGid[k][spid];
       labelToGid.insert({std::string(leaf->label), gid});
     }
-    prunedSpeciesTrees[k]->reindexLeaves(labelToGid);
-    InternodeDistance::computeFromSpeciesTree(*prunedSpeciesTrees[k],
+    _prunedSpeciesTrees[k]->reindexLeaves(labelToGid);
+    InternodeDistance::computeFromSpeciesTree(*_prunedSpeciesTrees[k],
          _prunedSpeciesMatrices[k]);
   }
   for (unsigned k = 0; k < _geneDistanceMatrices.size(); ++k) {
@@ -190,118 +191,37 @@ double Asteroid::computeBME(const PLLUnrootedTree &speciesTree)
     }
   }
   ParallelContext::sumDouble(res);
-  computeSubBMEsPrune(speciesTree);
+  _computeSubBMEsPrune(speciesTree);
+  Logger::timed << "after compute pruned " << std::endl;
   return res;
 }
 
 
 
- void Asteroid::_computeSubBMEsPruneRec(corax_unode_t *n1,
-    corax_unode_t *n2,
-    BoolMatrix &treated)
-{
-  auto i1 = n1->node_index;
-  auto i2 = n2->node_index;
-  unsigned int K = _K;
-  if (treated[i1][i2]) {
-    // stop if we've already been there
-    return;
-  }
-  if (!n1->next && !n2->next) {
-    // leaf-leaf case: already computed in constructor
-  } else if (!n2->next) {
-    // only n2 is a leaf, compute the symetric
-    _computeSubBMEsPruneRec(n2, n1, treated); 
-    for (unsigned int k = 0; k < _K; ++k) {
-      setCell(i1, i2, k, getCell(i2, i1, k));
-    }
-  } else {
-    // n2 is not a leaf, we can run recursion on n2
-    auto left2 = n2->next->back;
-    auto right2 = n2->next->next->back;
-    _computeSubBMEsPruneRec(n1, left2, treated);
-    _computeSubBMEsPruneRec(n1, right2, treated);
-    for (unsigned int k = 0; k < K; ++k) {
-      if (!_hasChildren[i1][k] || !_hasChildren[i2][k]) {
-        // Edge case: either n1 or n2 is not in the path
-        // of the induced tree, so its subBME should be
-        // ignored
-        setCell(i1, i2, k, 0.0);
-        continue;
-      }
-      // Now we can assume that both n1 and n2 are in 
-      // the path of the induced tree, but they might not
-      // be binary nodes in the induced tree
-      if (!_belongsToPruned[i2][k]) {
-        // Case 1: n2 is not in the induced tree
-        // Go down to n2's child that has children
-        if (_hasChildren[left2->node_index][k]) {
-          setCell(i1, i2, k, getCell(i1, left2->node_index, k));
-        } else {
-          setCell(i1, i2, k, getCell(i1, right2->node_index, k));
-        }
-      } else if (!_belongsToPruned[i1][k]) {
-        // Case 2: n2 is in the induced tree, n1 is not
-        // Note that n1 cannot be a leaf at this point
-        // go down to n1's child that has children
-        auto lefti1 = n1->next->back->node_index;
-        auto righti1 = n1->next->next->back->node_index;
-        if (_hasChildren[lefti1][k]) {
-          setCell(i1, i2, k, getCell(lefti1, i2, k));
-        } else {
-          setCell(i1, i2, k, getCell(righti1, i2, k));
-        }
-      } else {
-        // case 3: both n1 and n2 are in the induced tree
-        double v = getCell(i1, left2->node_index, k);
-        v += getCell(i1, right2->node_index, k);
-        v *= 0.5;
-        setCell(i1, i2, k, v);
-      }
-  
-    }
-  }
-  treated[i1][i2] = true;
-}
-
 void Asteroid::_computeSubBMEsPrune(const PLLUnrootedTree &speciesTree)
 {
-  auto nodesNumber = speciesTree.getDirectedNodesNumber();
-  // Fill hasChildren and belongsToPruned
-  _hasChildren = getBoolMatrix(nodesNumber, 
-      _K,
-      false);
-  _belongsToPruned = _hasChildren;
-  for (auto node: speciesTree.getPostOrderNodes()) {
-    auto index = node->node_index;
-    for (unsigned int k = 0; k < _K; ++k) {
-      if (!node->next) {
-        if (_perFamilyCoverage[k][index]) {
-          _hasChildren[index][k] = true;
-          _belongsToPruned[index][k] = true;
+  for (unsigned int k = 0; k < _K; ++k) {
+    auto &prunedSpeciesTree = *_prunedSpeciesTrees[k];
+    auto subtrees1 = prunedSpeciesTree.getReverseDepthNodes();
+    auto nodesNumber = subtrees1.size();
+    for (auto n1: subtrees1) {
+      auto subtrees2 = prunedSpeciesTree.getPostOrderNodesFrom(n1->back);
+      auto i1 = n1->node_index;
+      for (auto n2: subtrees2) {
+        auto i2 = n2->node_index;
+        if (!n1->next && !n2->next) { // both leaves
+          // already done
+        } else if (n1->next && !n2->next) { // n2 is a leaf
+          // we already computed the symetric
+          setCell(i1, i2, k, getCell(i2, i1, k));
+        } else  { // n2 is not a leaf
+          auto left2 = n2->next->back->node_index;
+          auto right2 = n2->next->next->back->node_index;
+          auto v = 0.5 * (getCell(i1, left2, k) + 
+              getCell(i1, right2, k));
+          setCell(i1, i2, k, v);
         }
-      } else {
-        auto left = node->next->back->node_index;
-        auto right = node->next->next->back->node_index;
-        _hasChildren[index][k] = 
-          _hasChildren[left][k] || _hasChildren[right][k];
-        _belongsToPruned[index][k] = 
-          _hasChildren[left][k] && _hasChildren[right][k];
       }
-    }
-  }
-  // Fill  the per-family subBME matrices
-  BoolMatrix treated = getBoolMatrix(nodesNumber, nodesNumber, false);
-  for (auto n1: speciesTree.getPostOrderNodes()) {
-    // we only need the subBMEs of the nodes of the
-    // subtree rooted at n1->back
-    for (auto n2: speciesTree.getPostOrderNodesFrom(n1->back)) {
-      if (n2 == n1->back) {
-        continue;
-      }
-      _computeSubBMEsPruneRec(n1,
-        n2,
-        treated);
     }
   }
 }
