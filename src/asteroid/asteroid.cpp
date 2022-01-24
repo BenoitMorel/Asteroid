@@ -212,6 +212,7 @@ void computeGeneDistances(const Arguments &arg,
 void computeFamilyCoverage(
     GeneTrees &geneTrees,
     unsigned int speciesNumber,
+    const UIntMatrix &gidToSpid,
     BoolMatrix &perFamilyCoverage)
 {
   Logger::timed << "Computing coverage..." << std::endl;
@@ -219,7 +220,8 @@ void computeFamilyCoverage(
       std::vector<bool>(speciesNumber, false));
   for (unsigned int k = 0; k < geneTrees.size(); ++k) {
     for (auto geneLeaf: geneTrees[k]->getLeaves()) {
-      auto spid = reinterpret_cast<intptr_t>(geneLeaf->data);
+      auto gid = reinterpret_cast<intptr_t>(geneLeaf->data);
+      auto spid = gidToSpid[k][gid];
       perFamilyCoverage[k][spid] = true;
     }
   }
@@ -390,7 +392,7 @@ int main(int argc, char * argv[])
   getPerCoreGeneTrees(geneTrees, perCoreGeneTrees);
   fillGidToSpid(perCoreGeneTrees, mappings, speciesToSpid, gidToSpid);
   
-  computeFamilyCoverage(perCoreGeneTrees, speciesNumber, perFamilyCoverage);
+  computeFamilyCoverage(perCoreGeneTrees, speciesNumber, gidToSpid, perFamilyCoverage);
   computeGeneDistances(arg, perCoreGeneTrees, distanceMatrices); 
   
    

@@ -178,7 +178,7 @@ double Asteroid::computeBME(const PLLUnrootedTree &speciesTree)
     }
   }
   ParallelContext::sumDouble(res);
-  //_computeSubBMEsPrune(speciesTree);
+  //computeSubBMEsPrune(speciesTree);
   return res;
 }
 
@@ -280,46 +280,6 @@ void Asteroid::_computeSubBMEsPrune(const PLLUnrootedTree &speciesTree)
   }
   // Fill  the per-family subBME matrices
   BoolMatrix treated = getBoolMatrix(nodesNumber, nodesNumber, false);
-  /*
-  // this is a code optimization that does not work with
-  // applying multiple SPR rounds simultaneously
-  if (false && _toUpdate.before) {
-    auto beforeNodes = speciesTree.getPostOrderNodesFrom(_toUpdate.before);
-    auto afterNodes = speciesTree.getPostOrderNodesFrom(_toUpdate.after);
-    auto prunedNodes = speciesTree.getPostOrderNodesFrom(_toUpdate.pruned);
-    auto betweenNodes = speciesTree.getPostOrderNodesFrom(_toUpdate.between[0]);
-    for (auto between: _toUpdate.between) {
-      for (auto node: speciesTree.getPostOrderNodesFrom(between)) {
-        betweenNodes.push_back(node);
-      }
-    }
-    for (auto i1: prunedNodes) {
-      for (auto i2: prunedNodes) {
-        treated[i1->node_index][i2->node_index] = true;
-      }
-    }
-    for (auto i1: betweenNodes) {
-      for (auto i2: betweenNodes) {
-        treated[i1->node_index][i2->node_index] = true;
-      }
-    }
-    for (auto i1: afterNodes) {
-      for (auto i2: afterNodes) {
-        treated[i1->node_index][i2->node_index] = true;
-      }
-    }
-    for (auto i1: beforeNodes) {
-      for (auto i2: beforeNodes) {
-        treated[i1->node_index][i2->node_index] = true;
-      }
-    }
-    for (auto i1: beforeNodes) {
-      for (auto i2: afterNodes) {
-        treated[i1->node_index][i2->node_index] = true;
-      }
-    }
-  }
-  */
   for (auto n1: speciesTree.getPostOrderNodes()) {
     // we only need the subBMEs of the nodes of the
     // subtree rooted at n1->back
