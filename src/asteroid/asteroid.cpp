@@ -97,7 +97,7 @@ void fillDistanceMatricesAstrid(GeneTrees &geneTrees,
         Logger::info << "Warning: missing entry in the distance matrix" << std::endl;
         
       } else {
-     //   sum[i][j] /= denominator[i][j];
+        sum[i][j] /= denominator[i][j];
       }
     }
   }
@@ -105,52 +105,20 @@ void fillDistanceMatricesAstrid(GeneTrees &geneTrees,
 }
 
 
-#undef ASTRID_WEIGHT
 void fillDistanceMatricesAsteroid(GeneTrees &geneTrees, 
-    unsigned int speciesNumber, 
     const IDParam &params,
     std::vector<DistanceMatrix> &distanceMatrices)
 {
   distanceMatrices.resize(geneTrees.size());
-#ifndef ASTRID_WEIGHT
   for (unsigned int k = 0; k < geneTrees.size(); ++k) {
     auto &d = distanceMatrices[k];
     auto &geneTree = *geneTrees[k];
-    d = initDistancetMatrix(speciesNumber,
-        speciesNumber,
+    auto geneNumber = geneTree.getLeavesNumber();
+    d = initDistancetMatrix(geneNumber,
+        geneNumber,
         std::numeric_limits<double>::infinity());
     InternodeDistance::computeFromGeneTree(geneTree, d, params);
   }
-#else
-  DistanceMatrix denominator = initDistancetMatrix(speciesNumber,
-      speciesNumber, 
-      0.0);
-  for (unsigned int k = 0; k < geneTrees.size(); ++k) {
-    auto &d = distanceMatrices[k];
-    auto &geneTree = *geneTrees[k];
-    d = initDistancetMatrix(speciesNumber,
-        speciesNumber,
-        std::numeric_limits<double>::infinity());
-    InternodeDistance::computeFromGeneTree(geneTree, d, params);
-    for (unsigned int i = 0; i < speciesNumber; ++i) {
-      for (unsigned int j = 0; j < speciesNumber; ++j) {
-        if (d[i][j] != std::numeric_limits<double>::infinity()) {
-          denominator[i][j] += 1.0;
-        }
-      }
-    }
-  }
-  for (unsigned int i = 0; i < speciesNumber; ++i) {
-    for (unsigned int j = 0; j < speciesNumber; ++j) {
-      if (denominator[i][j] == 0.0) {
-        continue;
-      }
-      for (unsigned int k = 0; k < geneTrees.size(); ++k) {
-        distanceMatrices[k][i][j] /= denominator[i][j];
-      }
-    }
-  }
-#endif
 }
 
 void init(Arguments &arg)
@@ -210,9 +178,26 @@ void applyMappings(GeneSpeciesMapping &mappings,
   }
 }
 
+void fillGidToSpid(GeneTrees &geneTrees,
+    GeneSpeciesMapping &mappings,
+    StringToUint &speciesToSpid,
+    UIntMatrix &gidToSpid)
+{
+  gidToSpid.resize(geneTrees.size());
+  for (unsigned int k = 0; k < geneTrees.size(); ++k) {
+    auto &geneTree = *geneTrees[k];
+    for (auto leaf: geneTree.getLeaves()) {
+      intptr_t gid = gidToSpid[k].size();
+      const auto &species = mappings.getSpecies(leaf->label);
+      auto spid = speciesToSpid.at(species);
+      leaf->data = reinterpret_cast<void*>(gid);
+      gidToSpid[k].push_back(spid);
+    }
+  }
+}
+
 void computeGeneDistances(const Arguments &arg,
     GeneTrees &geneTrees,
-    unsigned int speciesNumber,
     std::vector<DistanceMatrix> &distanceMatrices)
 {
   Logger::timed << "Computing internode distances from the gene trees..." << std::endl;
@@ -220,7 +205,6 @@ void computeGeneDistances(const Arguments &arg,
   idParams.minBL = arg.minBL;
  
   fillDistanceMatricesAsteroid(geneTrees, 
-      speciesNumber, 
       idParams, 
       distanceMatrices);
 }
@@ -291,6 +275,7 @@ void getDataNoCorrection(
 double optimize(PLLUnrootedTree &speciesTree,
     const std::vector<DistanceMatrix>  &asteroidDistanceMatrices,
     const BoolMatrix &asteroidPerFamilyCoverage,
+    const UIntMatrix &gidToSpid,
     bool noCorrection)
 {
   const std::vector<DistanceMatrix> *distanceMatrices = nullptr;
@@ -311,6 +296,7 @@ double optimize(PLLUnrootedTree &speciesTree,
   Logger::timed << "Initializing optimizer... " << std::endl;
   AsteroidOptimizer optimizer(speciesTree,
       *perFamilyCoverage,
+      gidToSpid,
       *distanceMatrices);
   Logger::timed << "Starting tree search... " << std::endl;
   return optimizer.optimize();
@@ -319,6 +305,7 @@ double optimize(PLLUnrootedTree &speciesTree,
 ScoredTrees search(SpeciesTrees &startingSpeciesTrees,
   const std::vector<DistanceMatrix> &asteroidDistanceMatrices,
   const BoolMatrix &asteroidPerFamilyCoverage,
+  const UIntMatrix &gidToSpid,
   bool noCorrection,
   int samples = -1)
 {
@@ -331,8 +318,11 @@ ScoredTrees search(SpeciesTrees &startingSpeciesTrees,
       st.score = optimize(*speciesTree, 
           asteroidDistanceMatrices, 
           asteroidPerFamilyCoverage,
+          gidToSpid,
           noCorrection);
     } else {
+      //assert(false); // todo re-enable!
+      /*
       std::vector<DistanceMatrix> sampledDistanceMatrices;
       BoolMatrix sampledPerFamilyCoverage;
       for (int i = 0; i < samples; ++i) {
@@ -344,7 +334,7 @@ ScoredTrees search(SpeciesTrees &startingSpeciesTrees,
           sampledDistanceMatrices,
           sampledPerFamilyCoverage,
           noCorrection);
-
+      */
     }
     scoredTrees.push_back(st);
   }
@@ -378,6 +368,7 @@ Trees generateRandomSpeciesTrees(std::unordered_set<std::string> &labels,
   return trees;
 }
 
+
 int main(int argc, char * argv[])
 {
   Arguments arg(argc, argv);
@@ -386,7 +377,8 @@ int main(int argc, char * argv[])
   StringToUint speciesToSpid;
   std::vector<DistanceMatrix> distanceMatrices;
   BoolMatrix perFamilyCoverage;
-  
+  UIntMatrix gidToSpid;
+
   init(arg);
   readGeneTrees(arg.inputGeneTreeFile, geneTrees);
   GeneSpeciesMapping mappings;
@@ -396,9 +388,10 @@ int main(int argc, char * argv[])
  
 
   getPerCoreGeneTrees(geneTrees, perCoreGeneTrees);
-  applyMappings(mappings, speciesToSpid, perCoreGeneTrees); 
+  fillGidToSpid(perCoreGeneTrees, mappings, speciesToSpid, gidToSpid);
+  
   computeFamilyCoverage(perCoreGeneTrees, speciesNumber, perFamilyCoverage);
-  computeGeneDistances(arg, perCoreGeneTrees, speciesNumber, distanceMatrices); 
+  computeGeneDistances(arg, perCoreGeneTrees, distanceMatrices); 
   
    
 
@@ -409,6 +402,7 @@ int main(int argc, char * argv[])
   ScoredTrees scoredTrees = search(startingSpeciesTrees,
       distanceMatrices,
       perFamilyCoverage,
+      gidToSpid,
       arg.noCorrection);
 
   std::string outputSpeciesTreeFile = arg.prefix + ".bestTree.newick";
@@ -427,7 +421,10 @@ int main(int argc, char * argv[])
   }
 
 
+
   if (arg.bootstrapTrees > 0) {
+    assert(false);
+    /*
     SpeciesTrees startingBSTrees =
       generateRandomSpeciesTrees(speciesLabels, 
           speciesToSpid,
@@ -446,6 +443,7 @@ int main(int argc, char * argv[])
     }
     splits.computeSupportValues(bestTree);
     bestTree.save(outputSpeciesTreeFile);
+    */
   } 
   
 

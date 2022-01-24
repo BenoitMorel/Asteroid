@@ -121,7 +121,9 @@ static void getPrunedSpeciesMatrix(const PLLUnrootedTree &speciesTree,
 
 Asteroid::Asteroid(const PLLUnrootedTree &speciesTree, 
       const BoolMatrix &perFamilyCoverage,
+      const UIntMatrix &gidToSpid,
       const std::vector<DistanceMatrix> &geneDistanceMatrices):
+  _gidToSpid(gidToSpid),
   _geneDistanceMatrices(geneDistanceMatrices),
   _perFamilyCoverage(perFamilyCoverage)
 {
@@ -134,17 +136,14 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
   }
   _prunedSpeciesMatrices = std::vector<DistanceMatrix>(
       _K, getNullMatrix(_speciesNumber));
-  _subBMEs = std::vector<double>(_N * _N * _K, 
+  _subBMEs.resize(_K);
+  for (unsigned int k = 0; k < _K; ++k) {
+    auto geneNumbers = gidToSpid[k].size();
+    _subBMEs[k] = std::vector<double>(geneNumbers * geneNumbers, 
       std::numeric_limits<double>::infinity());
-  // check integer overflow
-  assert(!_K || _subBMEs.size() / _K == _N * _N);
-  for (auto sp1: speciesTree.getLeaves()) {
-  ParallelContext::barrier();
-    auto i1 = sp1->node_index;
-    for (auto sp2: speciesTree.getLeaves()) {
-      auto i2 = sp2->node_index;
-      for (auto k = 0; k < _K; ++k) {
-        setCell(i1, i2, k, _geneDistanceMatrices[k][i1][i2]);
+    for (unsigned int i = 0; i < geneNumbers; ++i) {
+      for (unsigned int j = 0; j < geneNumbers; ++j) {
+        setCell(i, j, k, _geneDistanceMatrices[k][i][j]);
       }
     }
   }
@@ -167,18 +166,19 @@ double Asteroid::computeBME(const PLLUnrootedTree &speciesTree)
   }
   // O(kn^2)
   for (unsigned k = 0; k < _geneDistanceMatrices.size(); ++k) {
-    for (unsigned int i = 0; i < _speciesNumber; ++i) {
+    auto geneNumbers = _gidToSpid[k].size();
+    for (unsigned int i = 0; i < geneNumbers; ++i) {
       for (unsigned int j = 0; j < i; ++j) {
+        //auto v = getCell(i, j, k);
         auto v = _geneDistanceMatrices[k][i][j];
-        if (v == std::numeric_limits<double>::infinity()) { 
-          continue;
-        }
-        res += v * _pows[_prunedSpeciesMatrices[k][i][j]];
+        auto spidi = _gidToSpid[k][i];
+        auto spidj = _gidToSpid[k][j];
+        res += v * _pows[_prunedSpeciesMatrices[k][spidi][spidj]];
       }
     }
   }
   ParallelContext::sumDouble(res);
-  _computeSubBMEsPrune(speciesTree);
+  //_computeSubBMEsPrune(speciesTree);
   return res;
 }
 

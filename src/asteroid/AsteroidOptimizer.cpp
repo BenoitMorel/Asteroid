@@ -132,9 +132,10 @@ bool AsteroidOptimizer::computeAndApplyBestSPR()
 
 AsteroidOptimizer::AsteroidOptimizer(PLLUnrootedTree &speciesTree,
     const BoolMatrix &perFamilyCoverage,
+    const UIntMatrix &gidToSpid,
     const std::vector<DistanceMatrix> &distanceMatrices):
   _speciesTree(speciesTree),
-  _asteroid(speciesTree, perFamilyCoverage, distanceMatrices),
+  _asteroid(speciesTree, perFamilyCoverage, gidToSpid, distanceMatrices),
   _lastScore(0.0)
 {
   ParallelContext::barrier();
@@ -144,6 +145,7 @@ double AsteroidOptimizer::optimize()
 {
   double startingScore = eval(_speciesTree); 
   Logger::info << "Starting score: " << startingScore << std::endl;
+  ParallelContext::abort(0);
   bool ok = true;
   unsigned int it = 0;
   while (ok) {

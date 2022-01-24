@@ -8,6 +8,7 @@
 
 
 using BoolMatrix = std::vector< std::vector<bool> >;
+using UIntMatrix = std::vector< std::vector<unsigned int> >;
 
 struct SPRMove {
   corax_unode_t *pruneNode;
@@ -32,6 +33,7 @@ class Asteroid {
 public:
   Asteroid(const PLLUnrootedTree &speciesTree, 
       const BoolMatrix &perFamilyCoverage,
+      const UIntMatrix &gidToSpid,
       const std::vector<DistanceMatrix> &geneDistanceMatrices);
   virtual ~Asteroid() {}
   /*
@@ -51,6 +53,7 @@ public:
       std::vector<SPRMove> &bestMoves);
 
 private:
+  const UIntMatrix &_gidToSpid;
   // _getBestSPRRecMissing[k][i][j] is the distance
   // between species i and j for the gene family k
   // this value is only valid if no inf 
@@ -65,18 +68,15 @@ private:
   // _prunedSpeciesMatrices[k] is the internode distance for the
   // species tree induced by the family k
   std::vector<DistanceMatrix> _prunedSpeciesMatrices;
-  // _subBMEs[k][i][j] == average distance between the subtrees
-  // i and j (indexed with node_index). Only defined for non-
-  // intersecting i and j.
 
-  std::vector<double> _subBMEs;
+  std::vector< std::vector<double> > _subBMEs;
   double getCell(size_t sp1, size_t sp2, size_t k) {
-    size_t index = ((sp1 * _N) + sp2) * _K + k;
-    return _subBMEs[index];
+    size_t index = ((sp1 * _gidToSpid[k].size()) + sp2);
+    return _subBMEs[k][index];
   }
   void setCell(size_t sp1, size_t sp2, size_t k, double v) {
-    size_t index = ((sp1 * _N) + sp2) * _K + k;
-    _subBMEs[index] = v;
+    size_t index = ((sp1 * _gidToSpid[k].size()) + sp2);
+    _subBMEs[k][index] = v;
   }
   
   // _hasChildren[i][k] == true if there is at least one leaf

@@ -9,6 +9,7 @@ class AsteroidOptimizer {
 public:
   AsteroidOptimizer(PLLUnrootedTree &speciesTree,
       const BoolMatrix &perFamilyCoverage,
+      const UIntMatrix &gidToSpid,
       const std::vector<DistanceMatrix> &distanceMatrices);
   virtual ~AsteroidOptimizer() {}
   double optimize();
