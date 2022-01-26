@@ -207,7 +207,7 @@ public:
 
   void mapNodesWithInducedTree(PLLUnrootedTree &inducedTree,
       NodeVector &superToInduced,
-      std::vector<NodeVector> &inducedToSuper);
+      std::vector<NodeVector> &inducedToSuper) const;
 
 private:
   std::unique_ptr<corax_utree_t, void(*)(corax_utree_t*)> _tree;

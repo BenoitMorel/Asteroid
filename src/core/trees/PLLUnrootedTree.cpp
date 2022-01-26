@@ -900,7 +900,7 @@ void mapNodesWithInducedTreeAux(corax_unode_t *superNode,
 {
   if (!superNode->next) {
     auto it = inducedLabelToLeaf.find(std::string(superNode->label));
-    if (it == inducedLabelToLeaf.end()) {
+    if (it != inducedLabelToLeaf.end()) {
       auto inducedLeaf = it->second;
       superToInduced[superNode->node_index] = inducedLeaf;
       inducedToSuper[inducedLeaf->node_index].push_back(superNode);
@@ -920,7 +920,8 @@ void mapNodesWithInducedTreeAux(corax_unode_t *superNode,
     superToInduced[superNode->node_index] = inducedRight;
     inducedToSuper[inducedRight->node_index].push_back(superNode);
   } else {
-    auto inducedParent = getOtherNext(inducedLeft->back, inducedRight->back);
+    auto inducedParent = getOtherNext(inducedLeft->back, inducedRight->back)->back;
+    assert(nullptr != inducedParent);
     superToInduced[superNode->node_index] = inducedParent;
     inducedToSuper[inducedParent->node_index].push_back(superNode);
   }
@@ -929,8 +930,10 @@ void mapNodesWithInducedTreeAux(corax_unode_t *superNode,
 
 void PLLUnrootedTree::mapNodesWithInducedTree(PLLUnrootedTree &inducedTree,
       NodeVector &superToInduced,
-      std::vector<NodeVector> &inducedToSuper)
+      std::vector<NodeVector> &inducedToSuper) const
 {
+  superToInduced.clear();
+  inducedToSuper.clear();
   auto superPostOrderNodes = getPostOrderNodes();
   superToInduced.resize(superPostOrderNodes.size());
   std::fill(superToInduced.begin(), superToInduced.end(), nullptr);

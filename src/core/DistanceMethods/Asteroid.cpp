@@ -133,6 +133,9 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
   _N = speciesTree.getDirectedNodesNumber(); 
   _speciesNumber = speciesTree.getLeavesNumber();
   _spidToGid.resize(_K);
+  _superToInducedNodes.resize(_K);
+  _inducedToSuperNodes.resize(_K);
+  _pruneRegraftDiff.resize(_K);
   for (unsigned int k = 0; k < _K; ++k) {
     _spidToGid[k].resize(_N);
     for (unsigned int gid = 0; gid < _gidToSpid[k].size(); ++gid) {
@@ -155,6 +158,8 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
         setCell(i, j, k, _geneDistanceMatrices[k][i][j]);
       }
     }
+    _pruneRegraftDiff[k] = MatrixDouble(directedGeneNumbers,
+        std::vector<double>(directedGeneNumbers, 0.0));
   }
   ParallelContext::barrier();
 }
@@ -168,6 +173,7 @@ double Asteroid::computeBME(const PLLUnrootedTree &speciesTree)
   for (auto leaf: speciesTree.getLeaves()) {
     speciesLabelToSpid.insert({std::string(leaf->label), leaf->node_index});
   }
+   
   for (unsigned int k = 0; k < _K; ++k) {
     _prunedSpeciesTrees.push_back(
         speciesTree.getInducedTree(_perFamilyCoverage[k]));
@@ -178,6 +184,9 @@ double Asteroid::computeBME(const PLLUnrootedTree &speciesTree)
       labelToGid.insert({std::string(leaf->label), gid});
     }
     _prunedSpeciesTrees[k]->reindexLeaves(labelToGid);
+    speciesTree.mapNodesWithInducedTree(*_prunedSpeciesTrees[k],
+        _superToInducedNodes[k],
+        _inducedToSuperNodes[k]);
     InternodeDistance::computeFromSpeciesTree(*_prunedSpeciesTrees[k],
          _prunedSpeciesMatrices[k]);
   }
@@ -227,32 +236,21 @@ void Asteroid::_computeSubBMEsPrune(const PLLUnrootedTree &speciesTree)
 }
 
 
-void Asteroid::_getBestSPRRecMissing(unsigned int s,
-    StopCriterion stopCriterion,
-    std::vector<unsigned int> sprime, 
-    std::vector<corax_unode_t *> W0s, 
+// test regrafting  Wp between Vs and Vsplus1 after 
+// having regrafted Wp between Vsminus and Vs
+// and recursively test further SPR mvoes
+void Asteroid::precomputeSPRDiffRec(unsigned int k,
+    unsigned int s,
+    corax_unode_t *W0, 
     corax_unode_t *Wp, 
     corax_unode_t *Wsminus1, 
     corax_unode_t *Vsminus1, 
-    std::vector<double> delta_Vsminus2_Wp, // previous deltaAB
+    double delta_Vsminus2_Wp, // previous deltaAB
     corax_unode_t *Vs, 
-    double Lsminus1, // L_s-1
-    corax_unode_t *&bestRegraftNode,
-    SubBMEToUpdate &subBMEToUpdate,
-    double &bestLs,
-    unsigned int &bestS,
-    const BoolMatrix &belongsToPruned,
-    const BoolMatrix &hasChildren,
-    std::vector<bool> Vsminus2HasChildren, // does Vsminus2 have children after the previous moves
-    std::vector<bool> Vsminus1HasChildren) // does Vsminus1 have children after the previous moves
+    double diffMinus1, // L_s-1
+    std::vector<double> &regraftDiff)
 {
-  if (s > stopCriterion.maxRadius || 
-      stopCriterion.noImprovement > stopCriterion.maxRadiusWithoutImprovement) {
-    return;
-  }
-  subBMEToUpdate.tempBetween.push_back(Wsminus1);
   corax_unode_t *Ws = getOtherNext(Vs, Vsminus1->back)->back; 
-  unsigned int K = _K;
   // compute L_s
   // we compute LS for an NNI to ((A,B),(C,D)) by swapping B and C
   // where:
@@ -262,129 +260,43 @@ void Asteroid::_getBestSPRRecMissing(unsigned int s,
   // - D is Vs->back
   // A was modified by the previous (simulated) NNI moves
   // and its average distances need an update
-  double diff = 0.0;
-  std::vector<double> delta_Vsminus1_Wp(K, std::numeric_limits<double>::infinity());
-  std::vector<bool> VsHasChildren = Vsminus1HasChildren;
-  for (unsigned int k = 0; k < K; ++k) {
-    // if Wp has no children in the induced tree, the SPR move has no effect
-    // on the score of this family
-    if (!hasChildren[Wp->node_index][k]) {
-      continue;
-    }
-    // if there is no regrafting branch in the induced tree anymore, there is no 
-    // point in continuing computing stuff for this family
-    if (!hasChildren[Vsminus1->back->node_index][k]) {
-      continue;
-    }
-    // The current NNI move affects the current family score if and only if each of
-    // its 4 subtrees (after having recursively applied the previous NNI moves!!)
-    // have children in the induced tree
-    // At this point, Wp has children. Vsminus1HasChildren tells if the updated Vs has children
-    // belongsToPruned == true iif both the node children (Ws and Vs->back) have children
-    bool applyDiff = Vsminus1HasChildren[k] && belongsToPruned[Vsminus1->back->node_index][k];
- 
-    // only matters from s == 3
-    if (nullptr == W0s[k] && Vsminus1HasChildren[k]) {
-      W0s[k] = Wsminus1;
-    }
-
-    // deltaCD and deltaBD are trivial because not affected by previous NNI moves
-    double deltaCD = getCell(Ws->node_index, Vs->back->node_index, k);
-    double deltaBD = getCell(Wp->node_index, Vs->back->node_index, k);
-    
-    // deltaAB and deltaAC are affected by the previous moves
-    double deltaAB = 0.0;
-    double deltaAC = 0.0;
-    if (sprime[k] <= 1 && applyDiff) {
-      deltaAB = getCell(W0s[k]->node_index, Wp->node_index, k);
-      deltaAC = getCell(W0s[k]->node_index, Ws->node_index, k);
-    } else if (W0s[k]) {
-      deltaAC = _pows[sprime[k]] * 
-        (getCell(W0s[k]->node_index, Ws->node_index, k) - 
-         getCell(Wp->node_index, Ws->node_index, k));
-      deltaAC += getCell(Vsminus1->node_index, Ws->node_index, k);
-      if (hasChildren[Wsminus1->node_index][k] && Vsminus2HasChildren[k]) {
-        deltaAB = 0.5 * (delta_Vsminus2_Wp[k] + 
-          getCell(Wsminus1->node_index, Wp->node_index, k));
-      } else if (hasChildren[Wsminus1->node_index][k] && !Vsminus2HasChildren[k]) {
-        deltaAB = getCell(Wsminus1->node_index, Wp->node_index, k);
-      } else if (!hasChildren[Wsminus1->node_index][k] && Vsminus2HasChildren[k]) {
-        deltaAB = delta_Vsminus2_Wp[k];
-      } else {
-        deltaAB = std::numeric_limits<double>::infinity(); // won't be used anyway
-      }
-    }
-    if (applyDiff) {
-      double diffk = 0.125 * (deltaAB + deltaCD - deltaAC - deltaBD);
-      diff += diffk;
-      sprime[k] += 1;
-    }
-    
-    delta_Vsminus1_Wp[k] = deltaAB; // in our out the if???
-
-    // update VsHasChildren for next call
-    VsHasChildren[k] = Vsminus1HasChildren[k] || hasChildren[Ws->node_index][k];
-  }
-  ParallelContext::sumDouble(diff);
-  double Ls = Lsminus1 + diff;
-  if (Ls > bestLs) {
-    bestLs = Ls;
-    bestRegraftNode = Vs;
-    bestS = s;
-    subBMEToUpdate.between = subBMEToUpdate.tempBetween;
-    subBMEToUpdate.after = Vs->back;
-    subBMEToUpdate.pruned = Wp;
-    stopCriterion.noImprovement = 0;
+  double deltaCD = getCell(Ws->node_index, Vs->back->node_index, k);
+  double deltaBD = getCell(Wp->node_index, Vs->back->node_index, k);
+  double deltaAB = 0.0;
+  double deltaAC = 0.0;
+  if (s == 1) {
+    deltaAB = getCell(W0->node_index, Wp->node_index, k);
+    deltaAC = getCell(W0->node_index, Ws->node_index, k);
   } else {
-    stopCriterion.noImprovement++;
+    deltaAB = 0.5 * (delta_Vsminus2_Wp + 
+      getCell(Wsminus1->node_index, Wp->node_index, k));
+    deltaAC = getCell(Vsminus1->node_index, Ws->node_index, k);
+    deltaAC -= pow(0.5, s) * getCell(Wp->node_index, Ws->node_index, k);
+    deltaAC += pow(0.5, s) * getCell(W0->node_index, Ws->node_index, k);
   }
+  double diff = diffMinus1 + 0.125 * (deltaAB + deltaCD - deltaAC - deltaBD);
+  //Logger::info << regraftDiff.size() << " " << Vs->node_index << std::endl;
+  regraftDiff[Vs->node_index] = diff;
+  // recursive call
   if (Vs->back->next) {
-    _getBestSPRRecMissing(s+1, stopCriterion, sprime, W0s, Wp, Ws, Vs, delta_Vsminus1_Wp, Vs->back->next, 
-        Ls, bestRegraftNode, subBMEToUpdate, bestLs, bestS, belongsToPruned, hasChildren, Vsminus1HasChildren, VsHasChildren);
-    _getBestSPRRecMissing(s+1, stopCriterion, sprime, W0s, Wp, Ws, Vs, delta_Vsminus1_Wp, Vs->back->next->next, 
-        Ls, bestRegraftNode, subBMEToUpdate, bestLs, bestS, belongsToPruned, hasChildren, Vsminus1HasChildren, VsHasChildren);
+    precomputeSPRDiffRec(k, s+1, W0, Wp, Ws, Vs, deltaAB, Vs->back->next, 
+        diffMinus1, regraftDiff);
+    precomputeSPRDiffRec(k, s+1, W0, Wp, Ws, Vs, deltaAB, Vs->back->next->next, 
+        diffMinus1, regraftDiff);
   }
-  subBMEToUpdate.tempBetween.pop_back();
 }
 
-
-void Asteroid::getBestSPR(PLLUnrootedTree &speciesTree,
-      unsigned int maxRadiusWithoutImprovement,
-      std::vector<SPRMove> &bestMoves)
+void Asteroid::precomputeSPRDiffFromPrune(unsigned int k, 
+    corax_unode_t *prunedNode,
+    std::vector<double> &regraftDiff)
 {
-  _toUpdate.reset();
-  for (auto pruneNode: speciesTree.getPostOrderNodes()) {
-    double bestDiff = 0.0;
-    unsigned int bestS = 1;
-    corax_unode_t *bestRegraftNode = nullptr;
-    if (getBestSPRFromPrune(maxRadiusWithoutImprovement, pruneNode, bestRegraftNode, bestDiff, bestS)) {
-      bestMoves.push_back(SPRMove(pruneNode, bestRegraftNode, bestDiff));
-    }
-  }
-  std::sort(bestMoves.begin(), bestMoves.end());
-}
-
-
-
-bool Asteroid::getBestSPRFromPrune(unsigned int maxRadiusWithoutImprovement,
-      corax_unode_t *prunedNode,
-      corax_unode_t *&bestRegraftNode,
-      double &bestDiff,
-      unsigned int &bestS)
-{
-  bool foundBetter = false;
-  double oldBestDiff = bestDiff;
   auto Wp = prunedNode;
   if (!Wp->back->next) {
-    return foundBetter;
+    return;
   }
   std::vector<corax_unode_t *> V0s;
   V0s.push_back(Wp->back->next->back);
   V0s.push_back(Wp->back->next->next->back);
-  unsigned int K = _K;
-  std::vector<unsigned int> sprime(K, 1);
-  StopCriterion stopCriterion;
-  stopCriterion.maxRadiusWithoutImprovement = maxRadiusWithoutImprovement;
   for (auto V0: V0s) {
     auto V = getOtherNext(Wp->back, V0->back);
     if (!V->back->next) {
@@ -397,20 +309,59 @@ bool Asteroid::getBestSPRFromPrune(unsigned int maxRadiusWithoutImprovement,
       unsigned int s = 1;
       corax_unode_t *W0 = V0;
       corax_unode_t *Wsminus1 = W0;
-      std::vector<corax_unode_t *> W0s(K, nullptr);
-      std::vector<double> delta_V0_Wp; // not used at first iteration
-      std::vector<bool> V0HasChildren = _hasChildren[V0->node_index];
-      std::vector<bool> Vminus1HasChildren(V0HasChildren.size()); // won't be read at first iteration
-      _getBestSPRRecMissing(s, stopCriterion, sprime, W0s, Wp,  Wsminus1, V,delta_V0_Wp,
-          V1, 0.0, bestRegraftNode, _toUpdate, bestDiff, bestS, 
-          _belongsToPruned, _hasChildren, Vminus1HasChildren, V0HasChildren);
-      if (bestDiff > oldBestDiff) {
-        foundBetter = true;
-        _toUpdate.before = V0;
-        oldBestDiff = bestDiff;
-      }
+      double deltaAB = 0.0; // not used at first iteration
+      precomputeSPRDiffRec(k, s, W0, Wp,  Wsminus1, V, deltaAB,
+          V1, 0.0, regraftDiff);
     }
   }
-  return foundBetter;
 }
+
+void Asteroid::getBestSPR(PLLUnrootedTree &speciesTree,
+      unsigned int maxRadiusWithoutImprovement,
+      std::vector<SPRMove> &bestMoves)
+{
+  _toUpdate.reset();
+  for (unsigned int k = 0; k < _K; ++k) {
+    for (auto pruneNode: _prunedSpeciesTrees[k]->getPostOrderNodes()) {
+        precomputeSPRDiffFromPrune(k, pruneNode, _pruneRegraftDiff[k][pruneNode->node_index]);
+    }
+  }
+  Logger::info <<"getBestSPR " << std::endl;
+  unsigned int i = 0;
+  for (auto prunedNode: speciesTree.getPostOrderNodes()) {
+    double bestPrunedDiff = 0.0;
+    auto p = prunedNode->node_index;
+    corax_unode_t *bestRegraftNode = nullptr;
+    for (auto regraftNode: speciesTree.getPostOrderNodesFrom(prunedNode->back)) {
+      auto r = regraftNode->node_index;
+      double diff = 0.0;
+      for (unsigned int k = 0; k < _K; ++k) {
+        auto inducedPrune = _superToInducedNodes[k][p];
+        auto inducedRegraft = _superToInducedNodes[k][r];
+        if (inducedPrune && inducedRegraft) {
+          diff += _pruneRegraftDiff[k][inducedPrune->node_index][inducedRegraft->node_index];
+        }
+      }
+      ParallelContext::sumDouble(diff);
+      if (diff > bestPrunedDiff) {
+        bestPrunedDiff = diff;
+        bestRegraftNode = regraftNode;
+      }
+    }
+    if (bestRegraftNode) {
+      bestMoves.push_back(SPRMove(prunedNode, bestRegraftNode, bestPrunedDiff));
+    }
+  }
+  std::sort(bestMoves.begin(), bestMoves.end());
+  /*
+  Logger::info << "Number of bestMoves: " << bestMoves.size() << std::endl;
+  for (auto &m: bestMoves) {
+    Logger::info << m.score << std::endl;
+  }
+  */
+
+}
+
+
+
 

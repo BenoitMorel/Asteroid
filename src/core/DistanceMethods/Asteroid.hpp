@@ -39,7 +39,7 @@ public:
   /*
    *  Computes the BME score of the species tree
    *  and update the _subBMEs used to speedup the
-   *  getBestSPR call.
+   *  precomputeSPRDiff call.
    */
   virtual double computeBME(const PLLUnrootedTree &speciesTree);
 
@@ -55,7 +55,7 @@ public:
 private:
   const UIntMatrix &_gidToSpid;
   UIntMatrix _spidToGid;
-  // _getBestSPRRecMissing[k][i][j] is the distance
+  // _precomputeSPRDiffRecMissing[k][i][j] is the distance
   // between species i and j for the gene family k
   // this value is only valid if no inf 
   const std::vector<DistanceMatrix> &_geneDistanceMatrices;
@@ -69,8 +69,10 @@ private:
   // _prunedSpeciesMatrices[k] is the internode distance for the
   // species tree induced by the family k
   std::vector<std::shared_ptr<PLLUnrootedTree> > _prunedSpeciesTrees; 
+  std::vector<NodeVector> _superToInducedNodes; 
+  std::vector< std::vector<NodeVector> > _inducedToSuperNodes; 
   std::vector<DistanceMatrix> _prunedSpeciesMatrices;
-
+  std::vector<MatrixDouble> _pruneRegraftDiff;
   std::vector< std::vector<double> > _subBMEs;
   double getCell(size_t sp1, size_t sp2, size_t k) {
     size_t index = ((sp1 * _gidToSpid[k].size()) + sp2);
@@ -123,34 +125,18 @@ private:
       {}
   };
 
-  // lot of copies hgre...
-  void _getBestSPRRecMissing(unsigned int s,
-     StopCriterion stopCriterion,
-     std::vector<unsigned int> sprime, 
-     std::vector<corax_unode_t *> W0s, 
-     corax_unode_t *Wp, 
-     corax_unode_t *Wsminus1, 
-     corax_unode_t *Vsminus1, 
-     std::vector<double> delta_Vsminus2_Wp, // previous deltaAB
-     corax_unode_t *Vs, 
-     double Lsminus1, // L_s-1
-     corax_unode_t *&bestRegraftNode,
-     SubBMEToUpdate &subBMEToUpdate,
-     double &bestLs,
-     unsigned int &bestS,
-     const BoolMatrix &belongsToPruned,
-     const BoolMatrix &hasChildren,
-     std::vector<bool> Vsminus2HasChildren, // does Vsminus2 have children after the previous moves
-     std::vector<bool> Vsminus1HasChildren); // does Vsminus1 have children after the previous moves
-   
-
-  // computes _subBMEs[k][i1][i2] for all k
-  void _computeSubBMEsPruneRec(corax_unode_t *n1,
-    corax_unode_t *n2,
-    BoolMatrix &treated);
-  bool  getBestSPRFromPrune(unsigned int maxRadiusWithoutImprovement,
+  void precomputeSPRDiffFromPrune(unsigned int k, 
       corax_unode_t *prunedNode,
-      corax_unode_t *&bestRegraftNode,
-      double &bestDiff,
-      unsigned int &bestS);
+    std::vector<double> &regraftDiff);
+
+  void precomputeSPRDiffRec(unsigned int k,
+      unsigned int s,
+    corax_unode_t *W0, 
+    corax_unode_t *Wp, 
+    corax_unode_t *Wsminus1, 
+    corax_unode_t *Vsminus1, 
+    double delta_Vsminus2_Wp, // previous deltaAB
+    corax_unode_t *Vs, 
+    double diffMinus1, // L_s-1
+    std::vector<double> &regraftDiff);
 };
