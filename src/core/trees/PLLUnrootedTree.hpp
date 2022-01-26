@@ -16,6 +16,8 @@
 
 using UnodePrinter = 
   std::function<void(corax_unode_t *, std::stringstream &)>;
+using NodeVector = std::vector<corax_unode_t *>;
+using LabelToLeaf = std::unordered_map<std::string, corax_unode_t *>;
 
 void defaultUnodePrinter(corax_unode_t *node, 
     std::stringstream &ss);
@@ -202,6 +204,11 @@ public:
 
   static corax_unode_t *getLeft(corax_unode_t *node) {return node->next->back;}
   static corax_unode_t *getRight(corax_unode_t *node) {return node->next->next->back;}
+
+  void mapNodesWithInducedTree(PLLUnrootedTree &inducedTree,
+      NodeVector &superToInduced,
+      std::vector<NodeVector> &inducedToSuper);
+
 private:
   std::unique_ptr<corax_utree_t, void(*)(corax_utree_t*)> _tree;
 };

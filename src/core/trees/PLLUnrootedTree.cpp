@@ -882,3 +882,72 @@ std::shared_ptr<PLLUnrootedTree> PLLUnrootedTree::getInducedTree(const std::vect
   return std::make_shared<PLLUnrootedTree>(str, false);
 }
 
+static corax_unode_t *getOtherNext(corax_unode_t *n1, 
+    corax_unode_t *n2)
+{
+  if (n1->next == n2) {
+    return n2->next;
+  } else {
+    return n1->next;
+  }
+}
+
+// has to be called in post order (wrt the super tree) traversal
+void mapNodesWithInducedTreeAux(corax_unode_t *superNode,
+    const LabelToLeaf &inducedLabelToLeaf,  
+    NodeVector &superToInduced,
+    std::vector<NodeVector> &inducedToSuper)
+{
+  if (!superNode->next) {
+    auto it = inducedLabelToLeaf.find(std::string(superNode->label));
+    if (it == inducedLabelToLeaf.end()) {
+      auto inducedLeaf = it->second;
+      superToInduced[superNode->node_index] = inducedLeaf;
+      inducedToSuper[inducedLeaf->node_index].push_back(superNode);
+    } 
+    return;
+  }
+  auto superLeft = PLLUnrootedTree::getLeft(superNode);
+  auto superRight = PLLUnrootedTree::getRight(superNode);
+  auto inducedLeft = superToInduced[superLeft->node_index]; 
+  auto inducedRight = superToInduced[superRight->node_index]; 
+  if (!inducedRight && !inducedLeft) {
+    return;
+  } else if (!inducedRight) {
+    superToInduced[superNode->node_index] = inducedLeft;
+    inducedToSuper[inducedLeft->node_index].push_back(superNode);
+  } else if (!inducedLeft) {
+    superToInduced[superNode->node_index] = inducedRight;
+    inducedToSuper[inducedRight->node_index].push_back(superNode);
+  } else {
+    auto inducedParent = getOtherNext(inducedLeft->back, inducedRight->back);
+    superToInduced[superNode->node_index] = inducedParent;
+    inducedToSuper[inducedParent->node_index].push_back(superNode);
+  }
+}
+    
+
+void PLLUnrootedTree::mapNodesWithInducedTree(PLLUnrootedTree &inducedTree,
+      NodeVector &superToInduced,
+      std::vector<NodeVector> &inducedToSuper)
+{
+  auto superPostOrderNodes = getPostOrderNodes();
+  superToInduced.resize(superPostOrderNodes.size());
+  std::fill(superToInduced.begin(), superToInduced.end(), nullptr);
+  auto inducedTreeNodesCount = inducedTree.getLeavesNumber() 
+    + 3 * inducedTree.getInnerNodesNumber();
+  inducedToSuper.resize(inducedTreeNodesCount);
+  LabelToLeaf inducedLabelToLeaf;
+  for (auto leaf: inducedTree.getLeaves()) {
+    inducedLabelToLeaf.insert({std::string(leaf->label), leaf});
+  }
+  for (auto superNode: superPostOrderNodes) {
+    mapNodesWithInducedTreeAux(superNode,
+        inducedLabelToLeaf,
+        superToInduced,
+        inducedToSuper);
+  }
+}
+
+
+
