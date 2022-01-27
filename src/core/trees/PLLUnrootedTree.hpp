@@ -16,6 +16,7 @@
 
 using UnodePrinter = 
   std::function<void(corax_unode_t *, std::stringstream &)>;
+using NodeSet = std::unordered_set<corax_unode_t *>;
 using NodeVector = std::vector<corax_unode_t *>;
 using LabelToLeaf = std::unordered_map<std::string, corax_unode_t *>;
 
@@ -207,7 +208,9 @@ public:
 
   void mapNodesWithInducedTree(PLLUnrootedTree &inducedTree,
       NodeVector &superToInduced,
-      std::vector<NodeVector> &inducedToSuper) const;
+      std::vector<NodeSet> &inducedToSuper,
+      std::vector<NodeSet> &inducedToSuperRegraft
+      ) const;
 
 private:
   std::unique_ptr<corax_utree_t, void(*)(corax_utree_t*)> _tree;

@@ -72,7 +72,8 @@ private:
   // species tree induced by the family k
   std::vector<std::shared_ptr<PLLUnrootedTree> > _inducedSpeciesTrees; 
   std::vector<NodeVector> _superToInducedNodes; 
-  std::vector< std::vector<NodeVector> > _inducedToSuperNodes; 
+  std::vector< std::vector<NodeSet> > _inducedToSuperNodes; 
+  std::vector< std::vector<NodeSet> > _inducedToSuperNodesRegraft; 
   std::vector<DistanceMatrix> _prunedSpeciesMatrices;
   std::vector<MatrixDouble> _pruneRegraftDiff;
   std::vector< std::vector<double> > _subBMEs;

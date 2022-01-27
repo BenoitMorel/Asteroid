@@ -41,6 +41,7 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
   _spidToGid.resize(_K);
   _superToInducedNodes.resize(_K);
   _inducedToSuperNodes.resize(_K);
+  _inducedToSuperNodesRegraft.resize(_K);
   _pruneRegraftDiff.resize(_K);
   for (unsigned int k = 0; k < _K; ++k) {
     _spidToGid[k].resize(_N);
@@ -94,7 +95,8 @@ double Asteroid::computeBME(const PLLUnrootedTree &speciesTree)
     _inducedSpeciesTrees[k]->reindexLeaves(labelToGid);
     speciesTree.mapNodesWithInducedTree(*_inducedSpeciesTrees[k],
         _superToInducedNodes[k],
-        _inducedToSuperNodes[k]);
+        _inducedToSuperNodes[k],
+        _inducedToSuperNodesRegraft[k]);
     InternodeDistance::computeFromSpeciesTree(*_inducedSpeciesTrees[k],
          _prunedSpeciesMatrices[k]);
   }
@@ -250,7 +252,7 @@ void Asteroid::getBestSPR(PLLUnrootedTree &speciesTree,
       auto &superPrunedNodes = _inducedToSuperNodes[k][ipIndex];
       for (auto inducedRegraftNode: inducedPostOrderNodes) {
         auto irIndex = inducedRegraftNode->node_index;
-        auto &superRegraftNodes = _inducedToSuperNodes[k][irIndex];
+        auto &superRegraftNodes = _inducedToSuperNodesRegraft[k][irIndex];
         auto inducedDiff = _pruneRegraftDiff[k][ipIndex][irIndex];
         if (inducedDiff != 0.0) {
           for (auto superPrunedNode: superPrunedNodes) {

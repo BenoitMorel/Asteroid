@@ -885,10 +885,24 @@ std::shared_ptr<PLLUnrootedTree> PLLUnrootedTree::getInducedTree(const std::vect
 static corax_unode_t *getOtherNext(corax_unode_t *n1, 
     corax_unode_t *n2)
 {
+  assert(n1 != n2);
   if (n1->next == n2) {
+    assert(n2->next->next == n1);
     return n2->next;
   } else {
+    assert(n1->next->next == n2);
     return n1->next;
+  }
+}
+
+void fillWithChildren(corax_unode_t *parent,
+    NodeSet &children, 
+    bool firstCall = true)
+{
+  children.insert(parent);
+  if (parent->next) {
+    fillWithChildren(PLLUnrootedTree::getLeft(parent), children, false);
+    fillWithChildren(PLLUnrootedTree::getRight(parent), children, false);
   }
 }
 
@@ -896,7 +910,8 @@ static corax_unode_t *getOtherNext(corax_unode_t *n1,
 void mapNodesWithInducedTreeAux(corax_unode_t *superNode,
     const LabelToLeaf &inducedLabelToLeaf,  
     NodeVector &superToInduced,
-    std::vector<NodeVector> &inducedToSuper)
+    std::vector<NodeSet> &inducedToSuper,
+    std::vector<NodeSet> &inducedToSuperRegraft)
 {
   if (!superNode->next) {
     auto it = inducedLabelToLeaf.find(std::string(superNode->label));
@@ -905,7 +920,8 @@ void mapNodesWithInducedTreeAux(corax_unode_t *superNode,
       assert(!superToInduced[superNode->node_index]);
       assert(!inducedLeaf->next);
       superToInduced[superNode->node_index] = inducedLeaf;
-      inducedToSuper[inducedLeaf->node_index].push_back(superNode);
+      inducedToSuper[inducedLeaf->node_index].insert(superNode);
+      inducedToSuperRegraft[inducedLeaf->node_index].insert(superNode);
        //Logger::info << "map1 " << std::endl << PLLUnrootedTree::getSubtreeString(superNode) << std::endl <<  PLLUnrootedTree::getSubtreeString(inducedLeaf) << std::endl;
     } else {
        //Logger::info << "map1 no mapping " << PLLUnrootedTree::getSubtreeString(superNode) << std::endl << "null" << std::endl;
@@ -919,29 +935,43 @@ void mapNodesWithInducedTreeAux(corax_unode_t *superNode,
   auto inducedRight = superToInduced[superRight->node_index]; 
   if (!inducedRight && !inducedLeft) {
     //Logger::info << "map2 all null" << std::endl;
-
     return;
   } else if (!inducedRight) {
     assert(!superToInduced[superNode->node_index]);
     superToInduced[superNode->node_index] = inducedLeft;
-    inducedToSuper[inducedLeft->node_index].push_back(superNode);
+    inducedToSuper[inducedLeft->node_index].insert(superNode);
+    inducedToSuperRegraft[inducedLeft->node_index].insert(superNode);
+    fillWithChildren(superRight, 
+        inducedToSuperRegraft[inducedLeft->node_index]);
+    
     //Logger::info << "map3 " << std::endl << PLLUnrootedTree::getSubtreeString(superNode) << std::endl <<  PLLUnrootedTree::getSubtreeString(inducedLeft) << std::endl;
   } else if (!inducedLeft) {
     assert(!superToInduced[superNode->node_index]);
     superToInduced[superNode->node_index] = inducedRight;
-    inducedToSuper[inducedRight->node_index].push_back(superNode);
+    inducedToSuper[inducedRight->node_index].insert(superNode);
+    inducedToSuperRegraft[inducedRight->node_index].insert(superNode);
+    fillWithChildren(superLeft, 
+        inducedToSuperRegraft[inducedRight->node_index]);
     //Logger::info << "map4 " << std::endl << PLLUnrootedTree::getSubtreeString(superNode) << std::endl <<  PLLUnrootedTree::getSubtreeString(inducedRight) << std::endl;
   } else {
     //assert(inducedLeft->back->next);
     //assert(inducedRight->back->next);
+    if (inducedLeft->back == inducedRight) {
+      inducedToSuperRegraft[inducedLeft->node_index].insert(superNode);
+      inducedToSuperRegraft[inducedRight->node_index].insert(superNode);
+      return;
+    }
     auto inducedParent = getOtherNext(inducedLeft->back, inducedRight->back);
+    /*
     if (nullptr == inducedParent) {
       // do nothing
       return;
     }
+    */
     assert(!superToInduced[superNode->node_index]);
     superToInduced[superNode->node_index] = inducedParent;
-    inducedToSuper[inducedParent->node_index].push_back(superNode);
+    inducedToSuper[inducedParent->node_index].insert(superNode);
+    inducedToSuperRegraft[inducedParent->node_index].insert(superNode);
     // Logger::info << "map5" << std::endl << PLLUnrootedTree::getSubtreeString(superNode) << std::endl <<  PLLUnrootedTree::getSubtreeString(inducedParent) << std::endl;
   }
 }
@@ -949,16 +979,20 @@ void mapNodesWithInducedTreeAux(corax_unode_t *superNode,
 
 void PLLUnrootedTree::mapNodesWithInducedTree(PLLUnrootedTree &inducedTree,
       NodeVector &superToInduced,
-      std::vector<NodeVector> &inducedToSuper) const
+      std::vector<NodeSet> &inducedToSuper,
+      std::vector<NodeSet> &inducedToSuperRegraft
+      ) const
 {
   superToInduced.clear();
   inducedToSuper.clear();
+  inducedToSuperRegraft.clear();
   auto superPostOrderNodes = getPostOrderNodes();
   superToInduced.resize(superPostOrderNodes.size());
   std::fill(superToInduced.begin(), superToInduced.end(), nullptr);
   auto inducedTreeNodesCount = inducedTree.getLeavesNumber() 
     + 3 * inducedTree.getInnerNodesNumber();
   inducedToSuper.resize(inducedTreeNodesCount);
+  inducedToSuperRegraft.resize(inducedTreeNodesCount);
   LabelToLeaf inducedLabelToLeaf;
   for (auto leaf: inducedTree.getLeaves()) {
     inducedLabelToLeaf.insert({std::string(leaf->label), leaf});
@@ -967,7 +1001,14 @@ void PLLUnrootedTree::mapNodesWithInducedTree(PLLUnrootedTree &inducedTree,
     mapNodesWithInducedTreeAux(superNode,
         inducedLabelToLeaf,
         superToInduced,
-        inducedToSuper);
+        inducedToSuper,
+        inducedToSuperRegraft);
+  }
+  for (auto &nodeSet: inducedToSuperRegraft) {
+    auto copy = nodeSet;
+    for (auto v: copy) {
+      nodeSet.insert(v->back);
+    }
   }
 }
 
