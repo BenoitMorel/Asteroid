@@ -66,20 +66,22 @@ private:
   size_t _K;
   // _perFamilyCoverage[k][i] is true if the family k covers the species i
   BoolMatrix _perFamilyCoverage;
+  std::vector<unsigned int> _inducedDirectedNodeNumbers;
+
   // _prunedSpeciesMatrices[k] is the internode distance for the
   // species tree induced by the family k
-  std::vector<std::shared_ptr<PLLUnrootedTree> > _prunedSpeciesTrees; 
+  std::vector<std::shared_ptr<PLLUnrootedTree> > _inducedSpeciesTrees; 
   std::vector<NodeVector> _superToInducedNodes; 
   std::vector< std::vector<NodeVector> > _inducedToSuperNodes; 
   std::vector<DistanceMatrix> _prunedSpeciesMatrices;
   std::vector<MatrixDouble> _pruneRegraftDiff;
   std::vector< std::vector<double> > _subBMEs;
   double getCell(size_t sp1, size_t sp2, size_t k) {
-    size_t index = ((sp1 * _gidToSpid[k].size()) + sp2);
+    size_t index = ((sp1 * _inducedDirectedNodeNumbers[k]) + sp2);
     return _subBMEs[k][index];
   }
   void setCell(size_t sp1, size_t sp2, size_t k, double v) {
-    size_t index = ((sp1 * _gidToSpid[k].size()) + sp2);
+    size_t index = ((sp1 * _inducedDirectedNodeNumbers[k]) + sp2);
     _subBMEs[k][index] = v;
   }
   
@@ -93,26 +95,8 @@ private:
   // _pows[i] == pow(2, i) (precomputed to speedup computations)
   std::vector<double> _pows;
 
-  struct SubBMEToUpdate {
-    corax_unode_t *pruned;
-    corax_unode_t *before;
-    corax_unode_t *after;
-    std::vector<corax_unode_t *> between;
-    std::vector<corax_unode_t *> tempBetween;
-    SubBMEToUpdate() {reset();}
-    void reset() {
-      pruned = nullptr;
-      before = nullptr;
-      after = nullptr;
-      tempBetween.clear();
-      between.clear();
-    }
-  };
-  SubBMEToUpdate _toUpdate;
-
   double _computeBMEPrune(const PLLUnrootedTree &speciesTree);
   
-  // O(n^2)
   void _computeSubBMEsPrune();
 
   struct StopCriterion {

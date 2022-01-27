@@ -184,10 +184,11 @@ void fillGidToSpid(GeneTrees &geneTrees,
     UIntMatrix &gidToSpid)
 {
   gidToSpid.resize(geneTrees.size());
+  StringToUint labelToGid;
   for (unsigned int k = 0; k < geneTrees.size(); ++k) {
     auto &geneTree = *geneTrees[k];
     for (auto leaf: geneTree.getLeaves()) {
-      intptr_t gid = gidToSpid[k].size();
+      intptr_t gid = leaf->node_index;
       const auto &species = mappings.getSpecies(leaf->label);
       auto spid = speciesToSpid.at(species);
       leaf->data = reinterpret_cast<void*>(gid);

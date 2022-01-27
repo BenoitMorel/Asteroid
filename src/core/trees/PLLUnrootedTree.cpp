@@ -906,9 +906,9 @@ void mapNodesWithInducedTreeAux(corax_unode_t *superNode,
       assert(!inducedLeaf->next);
       superToInduced[superNode->node_index] = inducedLeaf;
       inducedToSuper[inducedLeaf->node_index].push_back(superNode);
-     // Logger::info << "map1 " << std::endl << PLLUnrootedTree::getSubtreeString(superNode) << std::endl <<  PLLUnrootedTree::getSubtreeString(inducedLeaf) << std::endl;
+       //Logger::info << "map1 " << std::endl << PLLUnrootedTree::getSubtreeString(superNode) << std::endl <<  PLLUnrootedTree::getSubtreeString(inducedLeaf) << std::endl;
     } else {
-   //   Logger::info << "map1 " << PLLUnrootedTree::getSubtreeString(superNode) << std::endl << "null" << std::endl;
+       //Logger::info << "map1 no mapping " << PLLUnrootedTree::getSubtreeString(superNode) << std::endl << "null" << std::endl;
 
     }
     return;
@@ -918,28 +918,31 @@ void mapNodesWithInducedTreeAux(corax_unode_t *superNode,
   auto inducedLeft = superToInduced[superLeft->node_index]; 
   auto inducedRight = superToInduced[superRight->node_index]; 
   if (!inducedRight && !inducedLeft) {
-    assert(false);
     //Logger::info << "map2 all null" << std::endl;
+
     return;
   } else if (!inducedRight) {
-    assert(false);
     assert(!superToInduced[superNode->node_index]);
     superToInduced[superNode->node_index] = inducedLeft;
     inducedToSuper[inducedLeft->node_index].push_back(superNode);
     //Logger::info << "map3 " << std::endl << PLLUnrootedTree::getSubtreeString(superNode) << std::endl <<  PLLUnrootedTree::getSubtreeString(inducedLeft) << std::endl;
   } else if (!inducedLeft) {
-    assert(false);
     assert(!superToInduced[superNode->node_index]);
     superToInduced[superNode->node_index] = inducedRight;
     inducedToSuper[inducedRight->node_index].push_back(superNode);
     //Logger::info << "map4 " << std::endl << PLLUnrootedTree::getSubtreeString(superNode) << std::endl <<  PLLUnrootedTree::getSubtreeString(inducedRight) << std::endl;
   } else {
+    //assert(inducedLeft->back->next);
+    //assert(inducedRight->back->next);
     auto inducedParent = getOtherNext(inducedLeft->back, inducedRight->back);
-    assert(nullptr != inducedParent);
+    if (nullptr == inducedParent) {
+      // do nothing
+      return;
+    }
     assert(!superToInduced[superNode->node_index]);
     superToInduced[superNode->node_index] = inducedParent;
     inducedToSuper[inducedParent->node_index].push_back(superNode);
-  //  Logger::info << "map5" << std::endl << PLLUnrootedTree::getSubtreeString(superNode) << std::endl <<  PLLUnrootedTree::getSubtreeString(inducedParent) << std::endl;
+    // Logger::info << "map5" << std::endl << PLLUnrootedTree::getSubtreeString(superNode) << std::endl <<  PLLUnrootedTree::getSubtreeString(inducedParent) << std::endl;
   }
 }
     
