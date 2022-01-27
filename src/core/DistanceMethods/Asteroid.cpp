@@ -16,13 +16,6 @@ static corax_unode_t *getOtherNext(corax_unode_t *n1,
   }
 }
 
-static BoolMatrix getBoolMatrix(unsigned int N,
-    unsigned int M,
-    bool value = false)
-{
-  std::vector<bool> v(M, value);
-  return BoolMatrix(N, v);
-}
 
 static DistanceMatrix getNullMatrix(unsigned int N,
     double value = 0.0)
@@ -30,94 +23,7 @@ static DistanceMatrix getNullMatrix(unsigned int N,
   std::vector<double> nullDistances(N, value);
   return DistanceMatrix(N, nullDistances); 
 }
-static DistanceMatrix getMatrix(unsigned int N,
-    unsigned int M,
-    double value)
-{
-  std::vector<double> nullDistances(M, value);
-  return DistanceMatrix(N, nullDistances); 
-}
 
-
-/**
- *  Computes the distances between a leaf (corresponding to
- *  currentNode at the first recursive call) and all other 
- *  nodes in the unrooted tree. If belongsToPruned is set,
- *  the distances are computed on the pruned subtree
- */
-static void fillDistancesRec(corax_unode_t *currentNode, 
-    double currentDistance,
-    std::vector<double> &distances,
-    std::vector<bool> *belongsToPruned)
-{
-  if (!belongsToPruned || (*belongsToPruned)[currentNode->node_index]) {
-    currentDistance += 1.0;
-  }
-  if (!currentNode->next) {
-    // leaf
-    if (!belongsToPruned || (*belongsToPruned)[currentNode->node_index]) {
-      auto spid = reinterpret_cast<intptr_t>(currentNode->data);
-      distances[spid] = currentDistance;
-    }
-    return;
-  }
-  fillDistancesRec(currentNode->next->back, 
-      currentDistance, 
-      distances,
-      belongsToPruned);
-  fillDistancesRec(currentNode->next->next->back, 
-      currentDistance, 
-      distances,
-      belongsToPruned);
-}
-
-/**
- *  Fills the internode distance matrix of a pruned species tree.
- *  belongsToPruned tells which species leaves do not belong
- *  to the pruned species tree.
- */
-static void fillSpeciesDistances(const PLLUnrootedTree &speciesTree,
-    DistanceMatrix &speciesDistanceMatrix,
-    std::vector<bool> *belongsToPruned = nullptr)
-{
-  for (auto leaf: speciesTree.getLeaves()) {
-    if (belongsToPruned && !(*belongsToPruned)[leaf->node_index]) {
-      continue;
-    }
-    std::string label = leaf->label;
-    auto id = reinterpret_cast<intptr_t>(leaf->data);
-    fillDistancesRec(leaf->back,
-        0.0,
-        speciesDistanceMatrix[id],
-        belongsToPruned);
-  }
-}
-
-static void getPrunedSpeciesMatrix(const PLLUnrootedTree &speciesTree,
-  std::vector<bool> &coverage,
-  DistanceMatrix &distanceMatrix)
-{
-  std::vector<bool> hasChildren(speciesTree.getDirectedNodesNumber(), false);
-  std::vector<bool> belongsToPruned(speciesTree.getDirectedNodesNumber(), false);
-  for (auto node: speciesTree.getPostOrderNodes()) {
-    auto index = node->node_index;
-    if (node->next) {
-      auto leftIndex = node->next->back->node_index;
-      auto rightIndex = node->next->next->back->node_index;
-      hasChildren[index] = hasChildren[leftIndex] || hasChildren[rightIndex];
-      belongsToPruned[index] = hasChildren[leftIndex] && hasChildren[rightIndex];
-    } else {
-      auto spid = reinterpret_cast<intptr_t>(node->data);
-      bool isCovered = coverage[spid];
-      hasChildren[index] = isCovered;
-      belongsToPruned[index] = isCovered;
-    }
-  }
-  fillSpeciesDistances(speciesTree,
-      distanceMatrix,
-      &belongsToPruned);
-}
-    
 
 
 Asteroid::Asteroid(const PLLUnrootedTree &speciesTree, 
@@ -189,6 +95,13 @@ double Asteroid::computeBME(const PLLUnrootedTree &speciesTree)
         _inducedToSuperNodes[k]);
     InternodeDistance::computeFromSpeciesTree(*_prunedSpeciesTrees[k],
          _prunedSpeciesMatrices[k]);
+  /*
+    for (auto node: speciesTree.getPostOrderNodes()) {
+      auto inode = _superToInducedNodes[k][node->node_index];
+      Logger::info << PLLUnrootedTree::getSubtreeString(node) << std::endl;      
+      Logger::info << PLLUnrootedTree::getSubtreeString(inode) << std::endl;      Logger::info << std::endl;
+    }
+  */
   }
   for (unsigned k = 0; k < _geneDistanceMatrices.size(); ++k) {
     auto geneNumbers = _gidToSpid[k].size();
@@ -200,19 +113,18 @@ double Asteroid::computeBME(const PLLUnrootedTree &speciesTree)
     }
   }
   ParallelContext::sumDouble(res);
-  _computeSubBMEsPrune(speciesTree);
+  _computeSubBMEsPrune();
   Logger::timed << "after compute pruned " << std::endl;
   return res;
 }
 
 
 
-void Asteroid::_computeSubBMEsPrune(const PLLUnrootedTree &speciesTree)
+void Asteroid::_computeSubBMEsPrune()
 {
   for (unsigned int k = 0; k < _K; ++k) {
     auto &prunedSpeciesTree = *_prunedSpeciesTrees[k];
     auto subtrees1 = prunedSpeciesTree.getReverseDepthNodes();
-    auto nodesNumber = subtrees1.size();
     for (auto n1: subtrees1) {
       auto subtrees2 = prunedSpeciesTree.getPostOrderNodesFrom(n1->back);
       auto i1 = n1->node_index;
@@ -280,9 +192,9 @@ void Asteroid::precomputeSPRDiffRec(unsigned int k,
   // recursive call
   if (Vs->back->next) {
     precomputeSPRDiffRec(k, s+1, W0, Wp, Ws, Vs, deltaAB, Vs->back->next, 
-        diffMinus1, regraftDiff);
+        diff, regraftDiff);
     precomputeSPRDiffRec(k, s+1, W0, Wp, Ws, Vs, deltaAB, Vs->back->next->next, 
-        diffMinus1, regraftDiff);
+        diff, regraftDiff);
   }
 }
 
@@ -290,6 +202,7 @@ void Asteroid::precomputeSPRDiffFromPrune(unsigned int k,
     corax_unode_t *prunedNode,
     std::vector<double> &regraftDiff)
 {
+  std::fill(regraftDiff.begin(), regraftDiff.end(), 0.0);
   auto Wp = prunedNode;
   if (!Wp->back->next) {
     return;
@@ -320,6 +233,7 @@ void Asteroid::getBestSPR(PLLUnrootedTree &speciesTree,
       unsigned int maxRadiusWithoutImprovement,
       std::vector<SPRMove> &bestMoves)
 {
+  bestMoves.clear();
   _toUpdate.reset();
   for (unsigned int k = 0; k < _K; ++k) {
     for (auto pruneNode: _prunedSpeciesTrees[k]->getPostOrderNodes()) {
@@ -327,12 +241,11 @@ void Asteroid::getBestSPR(PLLUnrootedTree &speciesTree,
     }
   }
   Logger::info <<"getBestSPR " << std::endl;
-  unsigned int i = 0;
   for (auto prunedNode: speciesTree.getPostOrderNodes()) {
     double bestPrunedDiff = 0.0;
     auto p = prunedNode->node_index;
     corax_unode_t *bestRegraftNode = nullptr;
-    for (auto regraftNode: speciesTree.getPostOrderNodesFrom(prunedNode->back)) {
+    for (auto regraftNode: speciesTree.getPostOrderNodes()) {
       auto r = regraftNode->node_index;
       double diff = 0.0;
       for (unsigned int k = 0; k < _K; ++k) {
@@ -342,6 +255,7 @@ void Asteroid::getBestSPR(PLLUnrootedTree &speciesTree,
           diff += _pruneRegraftDiff[k][inducedPrune->node_index][inducedRegraft->node_index];
         }
       }
+      
       ParallelContext::sumDouble(diff);
       if (diff > bestPrunedDiff) {
         bestPrunedDiff = diff;
@@ -354,11 +268,11 @@ void Asteroid::getBestSPR(PLLUnrootedTree &speciesTree,
   }
   std::sort(bestMoves.begin(), bestMoves.end());
   /*
-  Logger::info << "Number of bestMoves: " << bestMoves.size() << std::endl;
+   * Logger::info << "Number of bestMoves: " << bestMoves.size() << std::endl;
   for (auto &m: bestMoves) {
     Logger::info << m.score << std::endl;
   }
-  */
+*/
 
 }
 

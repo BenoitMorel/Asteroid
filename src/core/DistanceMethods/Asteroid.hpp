@@ -113,7 +113,7 @@ private:
   double _computeBMEPrune(const PLLUnrootedTree &speciesTree);
   
   // O(n^2)
-  void _computeSubBMEsPrune(const PLLUnrootedTree &speciesTree);
+  void _computeSubBMEsPrune();
 
   struct StopCriterion {
     unsigned int maxRadius;
