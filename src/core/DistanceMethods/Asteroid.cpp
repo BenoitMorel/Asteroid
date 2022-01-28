@@ -117,6 +117,7 @@ void Asteroid::_computeSubBMEsPrune()
     auto &prunedSpeciesTree = *_inducedSpeciesTrees[k];
     auto subtrees1 = prunedSpeciesTree.getReverseDepthNodes();
     for (auto n1: subtrees1) {
+      auto i1 = n1->node_index;
       auto subtrees2 = prunedSpeciesTree.getPostOrderNodesFrom(n1->back);
       for (auto n2: subtrees2) {
         auto i2 = n2->node_index;
