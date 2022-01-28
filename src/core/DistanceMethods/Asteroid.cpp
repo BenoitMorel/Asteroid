@@ -54,8 +54,8 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
     auto geneLeafNumber = _gidToSpid[k].size();
     auto geneNodeNumber = _inducedNodeNumber[k];
     _prunedSpeciesMatrices[k] = getNullMatrix(geneLeafNumber);
-    _subBMEs[k] = std::vector<double>(geneNodeNumber * geneNodeNumber, 
-      std::numeric_limits<double>::infinity());
+    _subBMEs[k] = MatrixDouble(geneNodeNumber, 
+        std::vector<double>(geneNodeNumber));
     for (unsigned int gid1 = 0; gid1 < geneLeafNumber; ++gid1) {
       for (unsigned int gid2 = 0; gid2 < geneLeafNumber; ++gid2) {
         setCell(gid1, gid2, k, _geneDistanceMatrices[k][gid1][gid2]);
@@ -118,15 +118,12 @@ void Asteroid::_computeSubBMEsPrune()
     auto subtrees1 = prunedSpeciesTree.getReverseDepthNodes();
     for (auto n1: subtrees1) {
       auto subtrees2 = prunedSpeciesTree.getPostOrderNodesFrom(n1->back);
-      auto i1 = n1->node_index;
       for (auto n2: subtrees2) {
         auto i2 = n2->node_index;
         if (!n1->next && !n2->next) { // both leaves
           // already done
         } else if (n1->next && !n2->next) { // n2 is a leaf
           // we already computed the symetric
-          assert(! (k == 0 && i2 == 1 && i1 == 0));
-          assert(! (k == 0 && i1 == 1 && i2 == 0));
           setCell(i1, i2, k, getCell(i2, i1, k));
         } else  { // n2 is not a leaf
           auto left2 = n2->next->back->node_index;
@@ -134,8 +131,6 @@ void Asteroid::_computeSubBMEsPrune()
           auto v = 0.5 * (getCell(i1, left2, k) + 
               getCell(i1, right2, k));
           setCell(i1, i2, k, v);
-          assert(! (k == 0 && i2 == 1 && i1 == 0));
-          assert(! (k == 0 && i1 == 1 && i2 == 0));
         }
       }
     }

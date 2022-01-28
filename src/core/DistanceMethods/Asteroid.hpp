@@ -84,14 +84,12 @@ private:
   std::vector< std::vector<NodeSet> > _inducedToSuperNodesRegraft; 
   std::vector<DistanceMatrix> _prunedSpeciesMatrices;
   std::vector<MatrixDouble> _pruneRegraftDiff;
-  std::vector< std::vector<double> > _subBMEs;
+  std::vector<MatrixDouble> _subBMEs;
   double getCell(size_t sp1, size_t sp2, size_t k) {
-    size_t index = ((sp1 * _inducedNodeNumber[k]) + sp2);
-    return _subBMEs[k][index];
+    return _subBMEs[k][sp1][sp2];
   }
   void setCell(size_t sp1, size_t sp2, size_t k, double v) {
-    size_t index = ((sp1 * _inducedNodeNumber[k]) + sp2);
-    _subBMEs[k][index] = v;
+    _subBMEs[k][sp1][sp2] = v;
   }
   
   // _hasChildren[i][k] == true if there is at least one leaf
