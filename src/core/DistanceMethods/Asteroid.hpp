@@ -53,20 +53,28 @@ public:
       std::vector<SPRMove> &bestMoves);
 
 private:
+  // Internal implementation
+  //
+  // Index convention:
+  // - k -> gene tree index
+  // - gid: node_index in the induced species tree
+  // - spid: node_index in the species tree
+  //
+  //
+
+  // _gidToSpid[k][gid] == spid
   const UIntMatrix &_gidToSpid;
+  // _spidToGid[k][spid] == gid
   UIntMatrix _spidToGid;
   // _precomputeSPRDiffRecMissing[k][i][j] is the distance
   // between species i and j for the gene family k
   // this value is only valid if no inf 
   const std::vector<DistanceMatrix> &_geneDistanceMatrices;
-  // number of species nodes
-  size_t _N;
-  size_t _speciesNumber;
   // number of families 
   size_t _K;
   // _perFamilyCoverage[k][i] is true if the family k covers the species i
   BoolMatrix _perFamilyCoverage;
-  std::vector<unsigned int> _inducedDirectedNodeNumbers;
+  std::vector<unsigned int> _inducedNodeNumber;
 
   // _prunedSpeciesMatrices[k] is the internode distance for the
   // species tree induced by the family k
@@ -78,11 +86,11 @@ private:
   std::vector<MatrixDouble> _pruneRegraftDiff;
   std::vector< std::vector<double> > _subBMEs;
   double getCell(size_t sp1, size_t sp2, size_t k) {
-    size_t index = ((sp1 * _inducedDirectedNodeNumbers[k]) + sp2);
+    size_t index = ((sp1 * _inducedNodeNumber[k]) + sp2);
     return _subBMEs[k][index];
   }
   void setCell(size_t sp1, size_t sp2, size_t k, double v) {
-    size_t index = ((sp1 * _inducedDirectedNodeNumbers[k]) + sp2);
+    size_t index = ((sp1 * _inducedNodeNumber[k]) + sp2);
     _subBMEs[k][index] = v;
   }
   

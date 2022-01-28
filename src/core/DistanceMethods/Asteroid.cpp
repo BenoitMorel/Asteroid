@@ -16,15 +16,12 @@ static corax_unode_t *getOtherNext(corax_unode_t *n1,
   }
 }
 
-
 static DistanceMatrix getNullMatrix(unsigned int N,
     double value = 0.0)
 {
   std::vector<double> nullDistances(N, value);
   return DistanceMatrix(N, nullDistances); 
 }
-
-
 
 Asteroid::Asteroid(const PLLUnrootedTree &speciesTree, 
       const BoolMatrix &perFamilyCoverage,
@@ -36,39 +33,36 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
 {
   ParallelContext::barrier();
   _K = geneDistanceMatrices.size();
-  _N = speciesTree.getDirectedNodesNumber(); 
-  _speciesNumber = speciesTree.getLeavesNumber();
   _spidToGid.resize(_K);
   _superToInducedNodes.resize(_K);
   _inducedToSuperNodes.resize(_K);
   _inducedToSuperNodesRegraft.resize(_K);
   _pruneRegraftDiff.resize(_K);
   for (unsigned int k = 0; k < _K; ++k) {
-    _spidToGid[k].resize(_N);
+    _spidToGid[k].resize(speciesTree.getLeavesNumber());
     for (unsigned int gid = 0; gid < _gidToSpid[k].size(); ++gid) {
       _spidToGid[k][_gidToSpid[k][gid]] = gid;
     }
-    _inducedDirectedNodeNumbers.push_back(_gidToSpid[k].size() * 4 - 6);
+    _inducedNodeNumber.push_back(_gidToSpid[k].size() * 4 - 6);
   }
-  for (unsigned int i = 0; i < _N + 3; ++i) {
+  for (unsigned int i = 0; i < speciesTree.getLeavesNumber() + 3; ++i) {
     _pows.push_back(std::pow(0.5, i));
   }
   _prunedSpeciesMatrices = std::vector<DistanceMatrix>(_K);
   _subBMEs.resize(_K);
   for (unsigned int k = 0; k < _K; ++k) {
-    auto geneNumbers = _gidToSpid[k].size();
-    _prunedSpeciesMatrices[k] = getNullMatrix(geneNumbers);
-    auto subBMESize = _inducedDirectedNodeNumbers[k] * 
-      _inducedDirectedNodeNumbers[k];
-    _subBMEs[k] = std::vector<double>(subBMESize, 
+    auto geneLeafNumber = _gidToSpid[k].size();
+    auto geneNodeNumber = _inducedNodeNumber[k];
+    _prunedSpeciesMatrices[k] = getNullMatrix(geneLeafNumber);
+    _subBMEs[k] = std::vector<double>(geneNodeNumber * geneNodeNumber, 
       std::numeric_limits<double>::infinity());
-    for (unsigned int i = 0; i < geneNumbers; ++i) {
-      for (unsigned int j = 0; j < geneNumbers; ++j) {
-        setCell(i, j, k, _geneDistanceMatrices[k][i][j]);
+    for (unsigned int gid1 = 0; gid1 < geneLeafNumber; ++gid1) {
+      for (unsigned int gid2 = 0; gid2 < geneLeafNumber; ++gid2) {
+        setCell(gid1, gid2, k, _geneDistanceMatrices[k][gid1][gid2]);
       }
     }
-    _pruneRegraftDiff[k] = MatrixDouble(_inducedDirectedNodeNumbers[k],
-        std::vector<double>(_inducedDirectedNodeNumbers[k], 0.0));
+    _pruneRegraftDiff[k] = MatrixDouble(_inducedNodeNumber[k],
+        std::vector<double>(_inducedNodeNumber[k], 0.0));
   }
   ParallelContext::barrier();
 }
@@ -101,8 +95,8 @@ double Asteroid::computeBME(const PLLUnrootedTree &speciesTree)
          _prunedSpeciesMatrices[k]);
   }
   for (unsigned k = 0; k < _geneDistanceMatrices.size(); ++k) {
-    auto geneNumbers = _inducedSpeciesTrees[k]->getLeavesNumber();
-    for (unsigned int i = 0; i < geneNumbers; ++i) {
+    auto geneLeafNumber = _inducedSpeciesTrees[k]->getLeavesNumber();
+    for (unsigned int i = 0; i < geneLeafNumber; ++i) {
       for (unsigned int j = 0; j < i; ++j) {
         auto v = _geneDistanceMatrices[k][i][j];
         res += v * _pows[_prunedSpeciesMatrices[k][i][j]];
@@ -184,12 +178,13 @@ void Asteroid::precomputeSPRDiffRec(unsigned int k,
     deltaAB = 0.5 * (delta_Vsminus2_Wp + 
       getCell(Wsminus1->node_index, Wp->node_index, k));
     deltaAC = getCell(Vsminus1->node_index, Ws->node_index, k);
-    deltaAC -= pow(0.5, s) * getCell(Wp->node_index, Ws->node_index, k);
-    deltaAC += pow(0.5, s) * getCell(W0->node_index, Ws->node_index, k);
+    deltaAC -= _pows[s] * getCell(Wp->node_index, Ws->node_index, k);
+    deltaAC += _pows[s] * getCell(W0->node_index, Ws->node_index, k);
   }
   double diff = diffMinus1 + 0.125 * (deltaAB + deltaCD - deltaAC - deltaBD);
   //Logger::info << regraftDiff.size() << " " << Vs->node_index << std::endl;
   regraftDiff[Vs->node_index] = diff;
+  regraftDiff[Vs->back->node_index] = diff;
   // recursive call
   if (Vs->back->next) {
     precomputeSPRDiffRec(k, s+1, W0, Wp, Ws, Vs, deltaAB, Vs->back->next, 
@@ -250,7 +245,7 @@ void Asteroid::getBestSPR(PLLUnrootedTree &speciesTree,
     for (auto inducedPrunedNode: inducedPostOrderNodes) {
       auto ipIndex = inducedPrunedNode->node_index;
       auto &superPrunedNodes = _inducedToSuperNodes[k][ipIndex];
-      for (auto inducedRegraftNode: inducedPostOrderNodes) {
+      for (auto inducedRegraftNode: _inducedSpeciesTrees[k]->getPostOrderNodesFrom(inducedPrunedNode->back)) {
         auto irIndex = inducedRegraftNode->node_index;
         auto &superRegraftNodes = _inducedToSuperNodesRegraft[k][irIndex];
         auto inducedDiff = _pruneRegraftDiff[k][ipIndex][irIndex];
