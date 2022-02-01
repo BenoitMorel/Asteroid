@@ -9,6 +9,31 @@ double AsteroidOptimizer::eval(PLLUnrootedTree &tree)
   return _lastScore;
 }
 
+static bool sprYeldsSameTree(corax_unode_t *p, corax_unode_t *r)
+{
+  assert(p);
+  assert(r);
+  assert(p->next);
+  return (r == p) || (r == p->next) || (r == p->next->next)
+    || (r == p->back) || (r == p->next->back) || (r == p->next->next->back);
+}
+
+bool isSPRMoveValid(PLLUnrootedTree &tree,
+    corax_unode_t *prune, 
+    corax_unode_t *regraft)
+{
+  // regraft should not be a child of prune
+  auto pruneChildren = tree.getPostOrderNodesFrom(prune->back);
+  for (auto child: pruneChildren) {
+    if (regraft == child) {
+      return false;
+    }
+    if (regraft->back == child) {
+      return false;
+    }
+  }
+  return !sprYeldsSameTree(prune, regraft);
+}
 
 bool isInScores(const std::vector<double> &scores, double score)
 {
@@ -65,7 +90,7 @@ bool AsteroidOptimizer::computeAndApplyBestSPR()
   double expectedDiff = 0.0;
   for (auto move: bestMoves) {
     if (move.score > epsilon 
-        && _speciesTree.isSPRMoveValid(move.pruneNode->back, move.regraftNode) 
+        && isSPRMoveValid(_speciesTree, move.pruneNode->back, move.regraftNode) 
         && !isInScores(hackScore, move.score)
         && !wasInvolved(move.pruneNode, involved)
         && !wasInvolved(move.regraftNode, involved)
@@ -75,13 +100,9 @@ bool AsteroidOptimizer::computeAndApplyBestSPR()
       rollbacks.push_back(emptyRollback);   
       hackScore.push_back(move.score);
       expectedDiff += move.score;
-      _asteroid.applySPRMoveCallback(_speciesTree,
-          move.pruneNode,
-          move.regraftNode);
       auto ok = corax_utree_spr(move.pruneNode->back, 
           move.regraftNode, 
           &rollbacks.back());
-      _asteroid._updateInducedSpeciesTrees(_speciesTree);
       appliedMoves++;
       assert(ok);
       better = true;

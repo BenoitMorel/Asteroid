@@ -23,8 +23,6 @@ using LabelToLeaf = std::unordered_map<std::string, corax_unode_t *>;
 void defaultUnodePrinter(corax_unode_t *node, 
     std::stringstream &ss);
 
-bool sprYeldsSameTree(corax_unode_t *p, corax_unode_t *r);
-
 /**
  *  C++ wrapper around the libpll corax_utree_t structure
  *  to represent an unrooted tree
@@ -166,11 +164,6 @@ public:
   void computePairwiseDistances(MatrixDouble &distances,
       bool leavesOnly = true);
 
-  // warning: expensive because checks that prune is not under
-  // regraft
-  bool isSPRMoveValid(corax_unode_t *prune, 
-    corax_unode_t *regraft) const;
-
 
   /**
    *  replace pu and pv by one of their three possible next pointers
@@ -215,12 +208,10 @@ public:
 
   void mapNodesWithInducedTree(PLLUnrootedTree &inducedTree,
       NodeVector &superToInduced,
-      NodeVector &superToInducedRegraft,
       std::vector<NodeSet> &inducedToSuper,
       std::vector<NodeSet> &inducedToSuperRegraft
       ) const;
 
-  void checkIndices();
 private:
   std::unique_ptr<corax_utree_t, void(*)(corax_utree_t*)> _tree;
 };

@@ -20,8 +20,7 @@ struct SPRMove {
     pruneNode(pruneNode),
     regraftNode(regraftNode),
     score(score) {}
-
-
+  
   bool operator < (const SPRMove& other) const {
     return other.score < score;
   }
@@ -53,15 +52,6 @@ public:
       unsigned int maxRadiusWithoutImprovement,
       std::vector<SPRMove> &bestMoves);
 
-  /**
-   *  Should be called when the optimizer definitively
-   *  applies an SPR move, in order to update the 
-   *  internal structures
-   */
-  void applySPRMoveCallback(const PLLUnrootedTree &speciesTree,
-      corax_unode_t *prune,
-      corax_unode_t *regraft);
-  void _updateInducedSpeciesTrees(const PLLUnrootedTree &speciesTree);
 private:
   // Internal implementation
   //
@@ -90,7 +80,6 @@ private:
   // species tree induced by the family k
   std::vector<std::shared_ptr<PLLUnrootedTree> > _inducedSpeciesTrees; 
   std::vector<NodeVector> _superToInducedNodes; 
-  std::vector<NodeVector> _superToInducedNodesRegraft; 
   std::vector< std::vector<NodeSet> > _inducedToSuperNodes; 
   std::vector< std::vector<NodeSet> > _inducedToSuperNodesRegraft; 
   std::vector<DistanceMatrix> _prunedSpeciesMatrices;
@@ -127,7 +116,6 @@ private:
       {}
   };
 
-  void _computeInducedSpeciesTrees(const PLLUnrootedTree &speciesTree);
   void precomputeSPRDiffFromPrune(unsigned int k, 
       corax_unode_t *prunedNode,
     std::vector<double> &regraftDiff);
