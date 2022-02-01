@@ -57,7 +57,7 @@ bool AsteroidOptimizer::computeAndApplyBestSPR()
   }
   bool better = false;
   unsigned int appliedMoves = 0;
-  unsigned int maxAppliedMoves = 1;//9999999; // no max
+  unsigned int maxAppliedMoves = 9999999; // no max
   corax_tree_rollback_t emptyRollback;
   std::vector<corax_tree_rollback_t> rollbacks;
   std::vector<double> hackScore;
@@ -75,11 +75,13 @@ bool AsteroidOptimizer::computeAndApplyBestSPR()
       rollbacks.push_back(emptyRollback);   
       hackScore.push_back(move.score);
       expectedDiff += move.score;
+      _asteroid.applySPRMoveCallback(_speciesTree,
+          move.pruneNode,
+          move.regraftNode);
       auto ok = corax_utree_spr(move.pruneNode->back, 
           move.regraftNode, 
           &rollbacks.back());
-      _asteroid.applySPRMoveCallback(move.pruneNode,
-          move.regraftNode);
+      _asteroid._updateInducedSpeciesTrees(_speciesTree);
       appliedMoves++;
       assert(ok);
       better = true;

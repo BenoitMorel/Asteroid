@@ -58,8 +58,10 @@ public:
    *  applies an SPR move, in order to update the 
    *  internal structures
    */
-  void applySPRMoveCallback(corax_unode_t *prune,
+  void applySPRMoveCallback(const PLLUnrootedTree &speciesTree,
+      corax_unode_t *prune,
       corax_unode_t *regraft);
+  void _updateInducedSpeciesTrees(const PLLUnrootedTree &speciesTree);
 private:
   // Internal implementation
   //

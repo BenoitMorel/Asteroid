@@ -88,6 +88,13 @@ void Asteroid::_computeInducedSpeciesTrees(const PLLUnrootedTree &speciesTree)
       labelToGid.insert({std::string(leaf->label), gid});
     }
     _inducedSpeciesTrees[k]->reindexLeaves(labelToGid);
+  }
+  _updateInducedSpeciesTrees(speciesTree);
+}
+
+void Asteroid::_updateInducedSpeciesTrees(const PLLUnrootedTree &speciesTree)
+{
+  for (unsigned int k = 0; k < _K; ++k) {
     speciesTree.mapNodesWithInducedTree(*_inducedSpeciesTrees[k],
         _superToInducedNodes[k],
         _superToInducedNodesRegraft[k],
@@ -101,7 +108,8 @@ void Asteroid::_computeInducedSpeciesTrees(const PLLUnrootedTree &speciesTree)
 double Asteroid::computeBME(const PLLUnrootedTree &speciesTree)
 {
   double res = 0.0;
-  _computeInducedSpeciesTrees(speciesTree);
+  //_computeInducedSpeciesTrees(speciesTree);
+  _updateInducedSpeciesTrees(speciesTree);
   for (unsigned k = 0; k < _geneDistanceMatrices.size(); ++k) {
     auto geneLeafNumber = _inducedSpeciesTrees[k]->getLeavesNumber();
     for (unsigned int i = 0; i < geneLeafNumber; ++i) {
@@ -291,17 +299,52 @@ void Asteroid::getBestSPR(PLLUnrootedTree &speciesTree,
 
 }
 
-void Asteroid::applySPRMoveCallback(corax_unode_t *prune,
+
+corax_unode_t *getInducedRegraft(corax_unode_t *superRegraft,
+  const NodeVector &superToInduced,
+  bool firstCall = true) {
+  corax_unode_t *res = nullptr;
+  if (firstCall) {
+    res = getInducedRegraft(superRegraft->back, superToInduced, false);
+    if (res) {
+      return res;
+    } 
+  }
+  if (superToInduced[superRegraft->node_index]) {
+    return superToInduced[superRegraft->node_index];
+  } else {
+    if (!superRegraft->next) {
+      return nullptr;
+    }
+    res = getInducedRegraft(superRegraft->next->back, superToInduced, false);
+    if (res) {
+      return res;
+    } else {
+      return getInducedRegraft(superRegraft->next->next->back, superToInduced, false);
+    } 
+  }
+
+}
+
+void Asteroid::applySPRMoveCallback(const PLLUnrootedTree &speciesTree,
+    corax_unode_t *prune,
     corax_unode_t *regraft)
 {
-  Logger::info << "Asteroid::applySPRMoveCallback" << std::endl;
   for (unsigned int k = 0; k < _K; ++k) {
-    auto tree = _inducedSpeciesTrees[k];
+    //auto tree = _inducedSpeciesTrees[k];
     auto iprune = _superToInducedNodes[k][prune->node_index];
     if (!iprune) {
       continue;
     }
-    auto iregraft = _superToInducedNodesRegraft[k][prune->node_index];
+    auto iregraft = getInducedRegraft(regraft, _superToInducedNodes[k]);
+    assert(iregraft);
+    if (iprune->back->next && !sprYeldsSameTree(iprune->back, iregraft)) {
+      corax_tree_rollback_t rb;
+      auto ok = corax_utree_spr(iprune->back, 
+          iregraft, 
+          &rb);
+      assert(ok);
+      }
   }
 }
 

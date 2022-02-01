@@ -607,7 +607,10 @@ std::string PLLUnrootedTree::getNewickString(UnodePrinter f,
   if (!root) {
     root = getAnyInnerNode();
   }
-  if (rooted) {
+  if (root && !root->next) {
+    ss << root->label << ";";
+  }
+  else if (rooted) {
     ss << "(";
     printAux(root, ss, f);
     ss << ",";
@@ -957,7 +960,6 @@ void mapNodesWithInducedTreeAux(corax_unode_t *superNode,
       superToInducedRegraft[superNode->node_index] = inducedLeaf;
       inducedToSuper[inducedLeaf->node_index].insert(superNode);
       inducedToSuperRegraft[inducedLeaf->node_index].insert(superNode);
-       //Logger::info << "map1 " << std::endl << PLLUnrootedTree::getSubtreeString(superNode) << std::endl <<  PLLUnrootedTree::getSubtreeString(inducedLeaf) << std::endl;
     } else {
        //Logger::info << "map1 no mapping " << PLLUnrootedTree::getSubtreeString(superNode) << std::endl << "null" << std::endl;
 
@@ -999,7 +1001,7 @@ void mapNodesWithInducedTreeAux(corax_unode_t *superNode,
     if (inducedLeft->back == inducedRight) {
       inducedToSuperRegraft[inducedLeft->node_index].insert(superNode);
       inducedToSuperRegraft[inducedRight->node_index].insert(superNode);
-      superToInduced[superNode->node_index] = inducedLeft; // pick on or the other, it doesn't matter
+      superToInducedRegraft[superNode->node_index] = inducedLeft; // pick on or the other, it doesn't matter
       return;
     }
     auto inducedParent = getOtherNext(inducedLeft->back, inducedRight->back);
@@ -1051,10 +1053,13 @@ void PLLUnrootedTree::mapNodesWithInducedTree(PLLUnrootedTree &inducedTree,
         inducedToSuper,
         inducedToSuperRegraft);
   }
-  for (auto &nodeSet: inducedToSuperRegraft) {
+  for (auto inode: inducedTree.getPostOrderNodes()) {
+    auto &nodeSet = inducedToSuperRegraft[inode->node_index];
     auto copy = nodeSet;
     for (auto v: copy) {
       nodeSet.insert(v->back);
+      superToInducedRegraft[v->back->node_index] = inode;
+      superToInducedRegraft[v->node_index] = inode;
     }
   }
 }

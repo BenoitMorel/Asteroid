@@ -220,6 +220,7 @@ public:
       std::vector<NodeSet> &inducedToSuperRegraft
       ) const;
 
+  void checkIndices();
 private:
   std::unique_ptr<corax_utree_t, void(*)(corax_utree_t*)> _tree;
 };
