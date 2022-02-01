@@ -64,6 +64,7 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
     _pruneRegraftDiff[k] = MatrixDouble(_inducedNodeNumber[k],
         std::vector<double>(_inducedNodeNumber[k], 0.0));
   }
+  _computedInducedTrees(speciesTree);
   ParallelContext::barrier();
 }
 
@@ -71,29 +72,7 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
 double Asteroid::computeBME(const PLLUnrootedTree &speciesTree)
 {
   double res = 0.0;
-  _inducedSpeciesTrees.clear();
-  StringToUint speciesLabelToSpid;
-  for (auto leaf: speciesTree.getLeaves()) {
-    speciesLabelToSpid.insert({std::string(leaf->label), leaf->node_index});
-  }
-   
-  for (unsigned int k = 0; k < _K; ++k) {
-    _inducedSpeciesTrees.push_back(
-        speciesTree.getInducedTree(_perFamilyCoverage[k]));
-    StringToUint labelToGid;
-    for (auto leaf: _inducedSpeciesTrees[k]->getLeaves()) {
-      auto spid = speciesLabelToSpid[leaf->label];
-      auto gid = _spidToGid[k][spid];
-      labelToGid.insert({std::string(leaf->label), gid});
-    }
-    _inducedSpeciesTrees[k]->reindexLeaves(labelToGid);
-    speciesTree.mapNodesWithInducedTree(*_inducedSpeciesTrees[k],
-        _superToInducedNodes[k],
-        _inducedToSuperNodes[k],
-        _inducedToSuperNodesRegraft[k]);
-    InternodeDistance::computeFromSpeciesTree(*_inducedSpeciesTrees[k],
-         _prunedSpeciesMatrices[k]);
-  }
+  _computedInducedTrees(speciesTree);
   for (unsigned k = 0; k < _geneDistanceMatrices.size(); ++k) {
     auto geneLeafNumber = _inducedSpeciesTrees[k]->getLeavesNumber();
     for (unsigned int i = 0; i < geneLeafNumber; ++i) {
@@ -107,6 +86,39 @@ double Asteroid::computeBME(const PLLUnrootedTree &speciesTree)
   _computeSubBMEsPrune();
   Logger::timed << "after compute pruned " << std::endl;
   return res;
+}
+  
+void Asteroid::_computedInducedTrees(const PLLUnrootedTree &speciesTree)
+{
+  _inducedSpeciesTrees.clear();
+  StringToUint speciesLabelToSpid;
+  for (auto leaf: speciesTree.getLeaves()) {
+    speciesLabelToSpid.insert({std::string(leaf->label), leaf->node_index});
+  }
+  for (unsigned int k = 0; k < _K; ++k) {
+    _inducedSpeciesTrees.push_back(
+        speciesTree.getInducedTree(_perFamilyCoverage[k]));
+    StringToUint labelToGid;
+    for (auto leaf: _inducedSpeciesTrees[k]->getLeaves()) {
+      auto spid = speciesLabelToSpid[leaf->label];
+      auto gid = _spidToGid[k][spid];
+      labelToGid.insert({std::string(leaf->label), gid});
+    }
+    _inducedSpeciesTrees[k]->reindexLeaves(labelToGid);
+  }
+  _updateInducedTrees(speciesTree);
+}
+
+void Asteroid::_updateInducedTrees(const PLLUnrootedTree &speciesTree)
+{
+  for (unsigned int k = 0; k < _K; ++k) {
+    speciesTree.mapNodesWithInducedTree(*_inducedSpeciesTrees[k],
+        _superToInducedNodes[k],
+        _inducedToSuperNodes[k],
+        _inducedToSuperNodesRegraft[k]);
+    InternodeDistance::computeFromSpeciesTree(*_inducedSpeciesTrees[k],
+         _prunedSpeciesMatrices[k]);
+  }
 }
 
 

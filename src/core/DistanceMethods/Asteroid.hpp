@@ -52,6 +52,9 @@ public:
       unsigned int maxRadiusWithoutImprovement,
       std::vector<SPRMove> &bestMoves);
 
+  void _computedInducedTrees(const PLLUnrootedTree &speciesTree);
+  void _updateInducedTrees(const PLLUnrootedTree &speciesTree);
+
 private:
   // Internal implementation
   //
