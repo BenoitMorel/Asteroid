@@ -301,30 +301,28 @@ bool Asteroid::getBestSPRFromPrune(unsigned int maxRadiusWithoutImprovement,
     }
   }
 
-  std::vector<corax_unode_t *> V0s;
-  V0s.push_back(pruneNode->back->next->back);
-  V0s.push_back(pruneNode->back->next->next->back);
-  for (auto V0: V0s) {
-    if (!V0->next) {
-      continue;
-    }
-    std::vector<corax_unode_t *> V1s;
-    V1s.push_back(V0->next->back);
-    V1s.push_back(V0->next->next->back);
-    for (auto V1: V1s) {
-      StopCriterion stopCriterion;
-      stopCriterion.maxRadiusWithoutImprovement = maxRadiusWithoutImprovement;
-      getBestSPRFromPruneRec(stopCriterion, 
-          pruneNode,
-          V1,
-          0.0,
-          ks,
-          bestRegraftNode,
-          bestDiff);
-      if (bestDiff > oldBestDiff) {
-        foundBetter = true;
-        oldBestDiff = bestDiff;
-      }
+  std::vector<corax_unode_t *> regrafts;
+  auto r1 = pruneNode->back->next->back;
+  auto r2 = pruneNode->back->next->next->back;
+  if (r1->next) {
+    regrafts.push_back(r1);
+  }
+  if (r2->next) {
+    regrafts.push_back(r2);
+  }
+  for (auto regraft: regrafts) {
+    StopCriterion stopCriterion;
+    stopCriterion.maxRadiusWithoutImprovement = maxRadiusWithoutImprovement;
+    getBestSPRFromPruneRec(stopCriterion, 
+        pruneNode,
+        regraft,
+        0.0,
+        ks,
+        bestRegraftNode,
+        bestDiff);
+    if (bestDiff > oldBestDiff) {
+      foundBetter = true;
+      oldBestDiff = bestDiff;
     }
   }
   return foundBetter;
