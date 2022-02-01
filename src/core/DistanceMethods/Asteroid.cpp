@@ -35,6 +35,7 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
   _K = geneDistanceMatrices.size();
   _spidToGid.resize(_K);
   _superToInducedNodes.resize(_K);
+  _superToInducedNodesRegraft.resize(_K);
   _inducedToSuperNodes.resize(_K);
   _inducedToSuperNodesRegraft.resize(_K);
   _pruneRegraftDiff.resize(_K);
@@ -64,13 +65,13 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
     _pruneRegraftDiff[k] = MatrixDouble(_inducedNodeNumber[k],
         std::vector<double>(_inducedNodeNumber[k], 0.0));
   }
+  _computeInducedSpeciesTrees(speciesTree);
   ParallelContext::barrier();
 }
 
 
-double Asteroid::computeBME(const PLLUnrootedTree &speciesTree)
+void Asteroid::_computeInducedSpeciesTrees(const PLLUnrootedTree &speciesTree)
 {
-  double res = 0.0;
   _inducedSpeciesTrees.clear();
   StringToUint speciesLabelToSpid;
   for (auto leaf: speciesTree.getLeaves()) {
@@ -89,11 +90,18 @@ double Asteroid::computeBME(const PLLUnrootedTree &speciesTree)
     _inducedSpeciesTrees[k]->reindexLeaves(labelToGid);
     speciesTree.mapNodesWithInducedTree(*_inducedSpeciesTrees[k],
         _superToInducedNodes[k],
+        _superToInducedNodesRegraft[k],
         _inducedToSuperNodes[k],
         _inducedToSuperNodesRegraft[k]);
     InternodeDistance::computeFromSpeciesTree(*_inducedSpeciesTrees[k],
          _prunedSpeciesMatrices[k]);
   }
+}
+
+double Asteroid::computeBME(const PLLUnrootedTree &speciesTree)
+{
+  double res = 0.0;
+  _computeInducedSpeciesTrees(speciesTree);
   for (unsigned k = 0; k < _geneDistanceMatrices.size(); ++k) {
     auto geneLeafNumber = _inducedSpeciesTrees[k]->getLeavesNumber();
     for (unsigned int i = 0; i < geneLeafNumber; ++i) {
@@ -283,6 +291,19 @@ void Asteroid::getBestSPR(PLLUnrootedTree &speciesTree,
 
 }
 
+void Asteroid::applySPRMoveCallback(corax_unode_t *prune,
+    corax_unode_t *regraft)
+{
+  Logger::info << "Asteroid::applySPRMoveCallback" << std::endl;
+  for (unsigned int k = 0; k < _K; ++k) {
+    auto tree = _inducedSpeciesTrees[k];
+    auto iprune = _superToInducedNodes[k][prune->node_index];
+    if (!iprune) {
+      continue;
+    }
+    auto iregraft = _superToInducedNodesRegraft[k][prune->node_index];
+  }
+}
 
 
 
