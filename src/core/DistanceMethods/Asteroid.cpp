@@ -304,17 +304,16 @@ bool Asteroid::getBestSPRFromPrune(unsigned int maxRadiusWithoutImprovement,
   std::vector<corax_unode_t *> V0s;
   V0s.push_back(pruneNode->back->next->back);
   V0s.push_back(pruneNode->back->next->next->back);
-  StopCriterion stopCriterion;
-  stopCriterion.maxRadiusWithoutImprovement = maxRadiusWithoutImprovement;
   for (auto V0: V0s) {
-    auto V = getOtherNext(pruneNode->back, V0->back);
-    if (!V->back->next) {
+    if (!V0->next) {
       continue;
     }
     std::vector<corax_unode_t *> V1s;
-    V1s.push_back(V->back->next);
-    V1s.push_back(V->back->next->next);
+    V1s.push_back(V0->next->back);
+    V1s.push_back(V0->next->next->back);
     for (auto V1: V1s) {
+      StopCriterion stopCriterion;
+      stopCriterion.maxRadiusWithoutImprovement = maxRadiusWithoutImprovement;
       getBestSPRFromPruneRec(stopCriterion, 
           pruneNode,
           V1,
