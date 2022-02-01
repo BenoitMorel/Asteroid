@@ -38,10 +38,10 @@ public:
   virtual ~Asteroid() {}
   /*
    *  Computes the BME score of the species tree
-   *  and update the _subBMEs used to speedup the
+   *  and update the _avDistances used to speedup the
    *  precomputeSPRDiff call.
    */
-  virtual double computeBME(const PLLUnrootedTree &speciesTree);
+  virtual double computeLength(const PLLUnrootedTree &speciesTree);
 
   /**
    *  Tries all possible SPR moves from the speciesTree
@@ -52,10 +52,19 @@ public:
       unsigned int maxRadiusWithoutImprovement,
       std::vector<SPRMove> &bestMoves);
 
-  void _computedInducedTrees(const PLLUnrootedTree &speciesTree);
+  void _computeInducedTrees(const PLLUnrootedTree &speciesTree);
   void _updateInducedTrees(const PLLUnrootedTree &speciesTree);
 
 private:
+  struct StopCriterion {
+    unsigned int maxRadius;
+    unsigned int maxRadiusWithoutImprovement;
+    unsigned int noImprovement;
+    StopCriterion(): maxRadius(99999),
+      maxRadiusWithoutImprovement(4),
+      noImprovement(0)
+      {}
+  };
   // Internal implementation
   //
   // Index convention:
@@ -83,17 +92,26 @@ private:
   // species tree induced by the family k
   std::vector<std::shared_ptr<PLLUnrootedTree> > _inducedSpeciesTrees; 
   std::vector<NodeVector> _superToInducedNodes; 
+  std::vector<NodeVector> _superToInducedNodesRegraft; 
   std::vector< std::vector<NodeSet> > _inducedToSuperNodes; 
   std::vector< std::vector<NodeSet> > _inducedToSuperNodesRegraft; 
   std::vector<DistanceMatrix> _prunedSpeciesMatrices;
   std::vector<MatrixDouble> _pruneRegraftDiff;
-  std::vector<MatrixDouble> _subBMEs;
+  std::vector<MatrixDouble> _avDistances;
   double getCell(size_t sp1, size_t sp2, size_t k) {
-    return _subBMEs[k][sp1][sp2];
+    return _avDistances[k][sp1][sp2];
   }
   void setCell(size_t sp1, size_t sp2, size_t k, double v) {
-    _subBMEs[k][sp1][sp2] = v;
+    _avDistances[k][sp1][sp2] = v;
   }
+
+  void getBestSPRFromPruneRec(StopCriterion stopCriterion,
+    corax_unode_t *prune,
+    corax_unode_t *regraft,
+    double lastScore,
+    const std::vector<unsigned int> &ks,
+    corax_unode_t *&bestRegraft,
+    double &bestScore);
   
   // _hasChildren[i][k] == true if there is at least one leaf
   // under i that belongs to the species tree induced by the
@@ -105,19 +123,7 @@ private:
   // _pows[i] == pow(2, i) (precomputed to speedup computations)
   std::vector<double> _pows;
 
-  double _computeBMEPrune(const PLLUnrootedTree &speciesTree);
-  
-  void _computeSubBMEsPrune();
-
-  struct StopCriterion {
-    unsigned int maxRadius;
-    unsigned int maxRadiusWithoutImprovement;
-    unsigned int noImprovement;
-    StopCriterion(): maxRadius(99999),
-      maxRadiusWithoutImprovement(4),
-      noImprovement(0)
-      {}
-  };
+  void _computeAvDistances();
 
   void precomputeSPRDiffFromPrune(unsigned int k, 
       corax_unode_t *prunedNode,
@@ -133,4 +139,9 @@ private:
     corax_unode_t *Vs, 
     double diffMinus1, // L_s-1
     std::vector<double> &regraftDiff);
+
+  bool getBestSPRFromPrune(unsigned int maxRadiusWithoutImprovement,
+    corax_unode_t *pruneNode,
+    corax_unode_t *&bestRegraftNode,
+    double &bestDiff);
 };

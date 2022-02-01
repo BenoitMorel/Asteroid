@@ -207,7 +207,9 @@ public:
   static corax_unode_t *getRight(corax_unode_t *node) {return node->next->next->back;}
 
   void mapNodesWithInducedTree(PLLUnrootedTree &inducedTree,
+      const NodeVector &superPostOrderNodes,
       NodeVector &superToInduced,
+      NodeVector &superToInducedRegraft,
       std::vector<NodeSet> &inducedToSuper,
       std::vector<NodeSet> &inducedToSuperRegraft
       ) const;

@@ -4,7 +4,7 @@
 
 double AsteroidOptimizer::eval(PLLUnrootedTree &tree)
 {
-  _lastScore = -_asteroid.computeBME(tree);
+  _lastScore = -_asteroid.computeLength(tree);
   Logger::timed << "score=" << _lastScore << std::endl;
   return _lastScore;
 }
@@ -63,7 +63,7 @@ bool wasInvolved(corax_unode_t *node,
   
 bool AsteroidOptimizer::computeAndApplyBestSPR()
 {
-  unsigned int maxRadiusWithoutImprovement = 5;
+  unsigned int maxRadiusWithoutImprovement = 1;
   Logger::timed << "last score " << _lastScore << std::endl;
   std::vector<SPRMove> bestMoves;
   double epsilon = 0.00000001;
@@ -112,7 +112,7 @@ bool AsteroidOptimizer::computeAndApplyBestSPR()
     }
   }
   Logger::info << "Moves: " << appliedMoves << std::endl;
-  double newScore = -_asteroid.computeBME(_speciesTree);
+  double newScore = -_asteroid.computeLength(_speciesTree);
   double diff = newScore - _lastScore;
   if (appliedMoves) {
     Logger::info << "Expected: " << expectedDiff << " real:" << diff << " highest: " << bestMoves[0].score << std::endl;
@@ -122,7 +122,7 @@ bool AsteroidOptimizer::computeAndApplyBestSPR()
     for (int i = rollbacks.size() - 1; i >= 1; --i) {
       corax_tree_rollback(&rollbacks[i]);
     }
-    newScore = -_asteroid.computeBME(_speciesTree);
+    newScore = -_asteroid.computeLength(_speciesTree);
     assert(newScore > _lastScore);
   }
   _lastScore = newScore;

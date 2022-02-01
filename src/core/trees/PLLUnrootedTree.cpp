@@ -962,17 +962,25 @@ void mapNodesWithInducedTreeAux(corax_unode_t *superNode,
     
 
 void PLLUnrootedTree::mapNodesWithInducedTree(PLLUnrootedTree &inducedTree,
+      const NodeVector &superPostOrderNodes,
       NodeVector &superToInduced,
+      NodeVector &superToInducedRegraft,
       std::vector<NodeSet> &inducedToSuper,
       std::vector<NodeSet> &inducedToSuperRegraft
       ) const
-{
-  superToInduced.clear();
-  inducedToSuper.clear();
-  inducedToSuperRegraft.clear();
-  auto superPostOrderNodes = getPostOrderNodes();
+{  
+  for (auto &ns: inducedToSuper) {
+    ns.clear();
+  }
+  for (auto &ns: inducedToSuperRegraft) {
+    ns.clear();
+  }
   superToInduced.resize(superPostOrderNodes.size());
+  superToInducedRegraft.resize(superPostOrderNodes.size());
   std::fill(superToInduced.begin(), superToInduced.end(), nullptr);
+  std::fill(superToInducedRegraft.begin(), 
+      superToInducedRegraft.end(),
+      nullptr);
   auto inducedTreeNodesCount = inducedTree.getLeavesNumber() 
     + 3 * inducedTree.getInnerNodesNumber();
   inducedToSuper.resize(inducedTreeNodesCount);
@@ -992,6 +1000,11 @@ void PLLUnrootedTree::mapNodesWithInducedTree(PLLUnrootedTree &inducedTree,
     auto copy = nodeSet;
     for (auto v: copy) {
       nodeSet.insert(v->back);
+    }
+  }
+  for (auto inducedNode: inducedTree.getPostOrderNodes()) {
+    for (auto superRegraft: inducedToSuperRegraft[inducedNode->node_index]) {
+      superToInducedRegraft[superRegraft->node_index] = inducedNode;
     }
   }
 }

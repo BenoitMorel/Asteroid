@@ -35,6 +35,7 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
   _K = geneDistanceMatrices.size();
   _spidToGid.resize(_K);
   _superToInducedNodes.resize(_K);
+  _superToInducedNodesRegraft.resize(_K);
   _inducedToSuperNodes.resize(_K);
   _inducedToSuperNodesRegraft.resize(_K);
   _pruneRegraftDiff.resize(_K);
@@ -49,12 +50,12 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
     _pows.push_back(std::pow(0.5, i));
   }
   _prunedSpeciesMatrices = std::vector<DistanceMatrix>(_K);
-  _subBMEs.resize(_K);
+  _avDistances.resize(_K);
   for (unsigned int k = 0; k < _K; ++k) {
     auto geneLeafNumber = _gidToSpid[k].size();
     auto geneNodeNumber = _inducedNodeNumber[k];
     _prunedSpeciesMatrices[k] = getNullMatrix(geneLeafNumber);
-    _subBMEs[k] = MatrixDouble(geneNodeNumber, 
+    _avDistances[k] = MatrixDouble(geneNodeNumber, 
         std::vector<double>(geneNodeNumber));
     for (unsigned int gid1 = 0; gid1 < geneLeafNumber; ++gid1) {
       for (unsigned int gid2 = 0; gid2 < geneLeafNumber; ++gid2) {
@@ -64,15 +65,15 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
     _pruneRegraftDiff[k] = MatrixDouble(_inducedNodeNumber[k],
         std::vector<double>(_inducedNodeNumber[k], 0.0));
   }
-  _computedInducedTrees(speciesTree);
+  _computeInducedTrees(speciesTree);
   ParallelContext::barrier();
 }
 
 
-double Asteroid::computeBME(const PLLUnrootedTree &speciesTree)
+double Asteroid::computeLength(const PLLUnrootedTree &speciesTree)
 {
   double res = 0.0;
-  _computedInducedTrees(speciesTree);
+  _computeInducedTrees(speciesTree);
   for (unsigned k = 0; k < _geneDistanceMatrices.size(); ++k) {
     auto geneLeafNumber = _inducedSpeciesTrees[k]->getLeavesNumber();
     for (unsigned int i = 0; i < geneLeafNumber; ++i) {
@@ -83,12 +84,12 @@ double Asteroid::computeBME(const PLLUnrootedTree &speciesTree)
     }
   }
   ParallelContext::sumDouble(res);
-  _computeSubBMEsPrune();
+  //_computeAvDistances();
   Logger::timed << "after compute pruned " << std::endl;
   return res;
 }
   
-void Asteroid::_computedInducedTrees(const PLLUnrootedTree &speciesTree)
+void Asteroid::_computeInducedTrees(const PLLUnrootedTree &speciesTree)
 {
   _inducedSpeciesTrees.clear();
   StringToUint speciesLabelToSpid;
@@ -111,9 +112,12 @@ void Asteroid::_computedInducedTrees(const PLLUnrootedTree &speciesTree)
 
 void Asteroid::_updateInducedTrees(const PLLUnrootedTree &speciesTree)
 {
+  auto superPostOrderNodes = speciesTree.getPostOrderNodes();
   for (unsigned int k = 0; k < _K; ++k) {
     speciesTree.mapNodesWithInducedTree(*_inducedSpeciesTrees[k],
+        superPostOrderNodes,
         _superToInducedNodes[k],
+        _superToInducedNodesRegraft[k],
         _inducedToSuperNodes[k],
         _inducedToSuperNodesRegraft[k]);
     InternodeDistance::computeFromSpeciesTree(*_inducedSpeciesTrees[k],
@@ -123,7 +127,7 @@ void Asteroid::_updateInducedTrees(const PLLUnrootedTree &speciesTree)
 
 
 
-void Asteroid::_computeSubBMEsPrune()
+void Asteroid::_computeAvDistances()
 {
   for (unsigned int k = 0; k < _K; ++k) {
     auto &prunedSpeciesTree = *_inducedSpeciesTrees[k];
@@ -203,11 +207,11 @@ void Asteroid::precomputeSPRDiffRec(unsigned int k,
 }
 
 void Asteroid::precomputeSPRDiffFromPrune(unsigned int k, 
-    corax_unode_t *prunedNode,
+    corax_unode_t *pruneNode,
     std::vector<double> &regraftDiff)
 {
   std::fill(regraftDiff.begin(), regraftDiff.end(), 0.0);
-  auto Wp = prunedNode;
+  auto Wp = pruneNode;
   if (!Wp->back->next) {
     return;
   }
@@ -233,68 +237,124 @@ void Asteroid::precomputeSPRDiffFromPrune(unsigned int k,
   }
 }
 
+
+
+void Asteroid::getBestSPRFromPruneRec(StopCriterion stopCriterion,
+    corax_unode_t *prune,
+    corax_unode_t *regraft,
+    double lastScore,
+    const std::vector<unsigned int> &ks,
+    corax_unode_t *&bestRegraft,
+    double &bestScore)
+{
+  // stop if we went too far without improvement
+  if (stopCriterion.noImprovement > 
+      stopCriterion.maxRadiusWithoutImprovement) {
+    return;
+  }
+  double newScore = 0.0;
+  for (auto k: ks) {
+    auto iPrune = _superToInducedNodes[k][prune->node_index]; 
+    if (!iPrune) {
+      continue;
+    }
+    auto iRegraft = _superToInducedNodesRegraft[k][regraft->node_index]; 
+    auto dk =  _pruneRegraftDiff[k][iPrune->node_index][iRegraft->node_index];
+    newScore += dk;  
+  }
+  ParallelContext::sumDouble(newScore);
+  
+  if (newScore > lastScore) {
+    // Improvement, search further
+    stopCriterion.noImprovement = 0;
+  } else {
+    stopCriterion.noImprovement++;
+  }
+  if (newScore > bestScore) {
+    bestScore = newScore;
+    bestRegraft = regraft;
+  }
+  if (regraft->next) {
+    auto left = PLLUnrootedTree::getLeft(regraft);
+    auto right = PLLUnrootedTree::getRight(regraft);
+    getBestSPRFromPruneRec(stopCriterion, prune, left, newScore, ks, bestRegraft, bestScore);
+    getBestSPRFromPruneRec(stopCriterion, prune, right, newScore, ks, bestRegraft, bestScore);
+  }
+}
+
+bool Asteroid::getBestSPRFromPrune(unsigned int maxRadiusWithoutImprovement,
+    corax_unode_t *pruneNode,
+    corax_unode_t *&bestRegraftNode,
+    double &bestDiff)
+{
+  bool foundBetter = false;
+  double oldBestDiff = bestDiff;
+  
+  if (!pruneNode->back->next) {
+    return foundBetter;
+  }
+  
+  std::vector<unsigned int> ks;
+  for (unsigned int k = 0; k < _K; ++k) {
+    if (_superToInducedNodes[k][pruneNode->node_index]) {
+      ks.push_back(k);
+    }
+  }
+
+  std::vector<corax_unode_t *> V0s;
+  V0s.push_back(pruneNode->back->next->back);
+  V0s.push_back(pruneNode->back->next->next->back);
+  StopCriterion stopCriterion;
+  stopCriterion.maxRadiusWithoutImprovement = maxRadiusWithoutImprovement;
+  for (auto V0: V0s) {
+    auto V = getOtherNext(pruneNode->back, V0->back);
+    if (!V->back->next) {
+      continue;
+    }
+    std::vector<corax_unode_t *> V1s;
+    V1s.push_back(V->back->next);
+    V1s.push_back(V->back->next->next);
+    for (auto V1: V1s) {
+      getBestSPRFromPruneRec(stopCriterion, 
+          pruneNode,
+          V1,
+          0.0,
+          ks,
+          bestRegraftNode,
+          bestDiff);
+      if (bestDiff > oldBestDiff) {
+        foundBetter = true;
+        oldBestDiff = bestDiff;
+      }
+    }
+  }
+  return foundBetter;
+}
+
+    
 void Asteroid::getBestSPR(PLLUnrootedTree &speciesTree,
       unsigned int maxRadiusWithoutImprovement,
       std::vector<SPRMove> &bestMoves)
 {
+  _computeAvDistances();
   bestMoves.clear();
   for (unsigned int k = 0; k < _K; ++k) {
     for (auto pruneNode: _inducedSpeciesTrees[k]->getPostOrderNodes()) {
       precomputeSPRDiffFromPrune(k, pruneNode, _pruneRegraftDiff[k][pruneNode->node_index]);
     }
   }
-  auto postOrderNodes = speciesTree.getPostOrderNodes();
-  MatrixDouble totalDiff = MatrixDouble(postOrderNodes.size(),
-      std::vector<double>(postOrderNodes.size(), 0.0));
-
-  for (unsigned int k = 0; k < _K; ++k) {
-    auto inducedPostOrderNodes = 
-      _inducedSpeciesTrees[k]->getPostOrderNodes();
-    for (auto inducedPrunedNode: inducedPostOrderNodes) {
-      auto ipIndex = inducedPrunedNode->node_index;
-      auto &superPrunedNodes = _inducedToSuperNodes[k][ipIndex];
-      for (auto inducedRegraftNode: _inducedSpeciesTrees[k]->getPostOrderNodesFrom(inducedPrunedNode->back)) {
-        auto irIndex = inducedRegraftNode->node_index;
-        auto &superRegraftNodes = _inducedToSuperNodesRegraft[k][irIndex];
-        auto inducedDiff = _pruneRegraftDiff[k][ipIndex][irIndex];
-        if (inducedDiff != 0.0) {
-          for (auto superPrunedNode: superPrunedNodes) {
-            auto spIndex = superPrunedNode->node_index;
-            for (auto superRegraftNode: superRegraftNodes) {
-              auto srIndex = superRegraftNode->node_index;
-              totalDiff[spIndex][srIndex] += inducedDiff;
-            }
-          }
-        }
-      }
-    }
-  }
-  for (auto pruneNode: postOrderNodes) {
-    auto p = pruneNode->node_index;
-    double bestPruneDiff = 0.0;
+  for (auto pruneNode: speciesTree.getPostOrderNodes()) {
+    double bestDiff = 0.0;
     corax_unode_t *bestRegraftNode = nullptr;
-    for (auto regraftNode: postOrderNodes) {
-      auto r = regraftNode->node_index;
-      ParallelContext::sumDouble(totalDiff[p][r]);
-      if (totalDiff[p][r] > bestPruneDiff) {
-        bestPruneDiff = totalDiff[p][r];
-        bestRegraftNode = regraftNode;
-      }
-    }
-    if (bestRegraftNode) {
-      bestMoves.push_back(SPRMove(pruneNode, bestRegraftNode, bestPruneDiff));
+    if (getBestSPRFromPrune(maxRadiusWithoutImprovement, 
+          pruneNode, 
+          bestRegraftNode, 
+          bestDiff)) {
+      bestMoves.push_back(SPRMove(pruneNode, bestRegraftNode, bestDiff));
     }
   }
   std::sort(bestMoves.begin(), bestMoves.end());
-  /*
-   * Logger::info << "Number of bestMoves: " << bestMoves.size() << std::endl;
-  for (auto &m: bestMoves) {
-    Logger::info << m.score << std::endl;
-  }
-*/
-
 }
-
 
 
 
