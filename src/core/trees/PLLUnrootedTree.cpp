@@ -292,7 +292,7 @@ std::vector<corax_unode_t *> PLLUnrootedTree::getBranchesDeterministic() const
 
 static void fillPostOrder(corax_unode_t *node,
     std::vector<corax_unode_t*> &nodes,
-    std::vector<char> &markedNodes)
+    std::vector<bool> &markedNodes)
 {
   // we already traversed this node
   if (markedNodes[node->node_index]) {
@@ -307,12 +307,22 @@ static void fillPostOrder(corax_unode_t *node,
   }
   nodes.push_back(node);
 }
+
+static void fillPostOrderNoMarker(corax_unode_t *node,
+    std::vector<corax_unode_t*> &nodes)
+{
+
+  if (node->next) {
+    fillPostOrderNoMarker(PLLUnrootedTree::getLeft(node), nodes);
+    fillPostOrderNoMarker(PLLUnrootedTree::getRight(node), nodes);
+  }
+  nodes.push_back(node);
+}
   
 std::vector<corax_unode_t*> PLLUnrootedTree::getPostOrderNodesFrom(corax_unode_t *node) const
 {
   std::vector<corax_unode_t*> nodes;
-  std::vector<char> markedNodes(getDirectedNodesNumber(), false);
-  fillPostOrder(node, nodes, markedNodes);
+  fillPostOrderNoMarker(node, nodes);
   return nodes;
 }
 
@@ -320,7 +330,7 @@ std::vector<corax_unode_t*> PLLUnrootedTree::getPostOrderNodesFrom(corax_unode_t
 std::vector<corax_unode_t*> PLLUnrootedTree::getPostOrderNodes(bool innerOnly) const
 {
   std::vector<corax_unode_t*> nodes;
-  std::vector<char> markedNodes(getDirectedNodesNumber(), false);
+  std::vector<bool> markedNodes(getDirectedNodesNumber(), false);
   if (innerOnly) {
     for (auto node: getLeaves()) {
       markedNodes[node->node_index] = true;

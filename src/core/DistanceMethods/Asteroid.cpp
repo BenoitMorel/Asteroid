@@ -232,7 +232,6 @@ void Asteroid::precomputeSPRDiffFromPrune(unsigned int k,
 
 
 void Asteroid::getBestSPRFromPruneRec(StopCriterion stopCriterion,
-    corax_unode_t *prune,
     corax_unode_t *regraft,
     double lastBestScore,
     const std::vector<unsigned int> &ks,
@@ -273,8 +272,8 @@ void Asteroid::getBestSPRFromPruneRec(StopCriterion stopCriterion,
   if (regraft->next) {
     auto left = PLLUnrootedTree::getLeft(regraft);
     auto right = PLLUnrootedTree::getRight(regraft);
-    getBestSPRFromPruneRec(stopCriterion, prune, left, lastBestScore, ks,inducedPruneIndices,  bestRegraft, bestScore);
-    getBestSPRFromPruneRec(stopCriterion, prune, right, lastBestScore, ks, inducedPruneIndices,  bestRegraft, bestScore);
+    getBestSPRFromPruneRec(stopCriterion, left, lastBestScore, ks,inducedPruneIndices,  bestRegraft, bestScore);
+    getBestSPRFromPruneRec(stopCriterion, right, lastBestScore, ks, inducedPruneIndices,  bestRegraft, bestScore);
   }
 }
 
@@ -313,7 +312,6 @@ bool Asteroid::getBestSPRFromPrune(unsigned int maxRadiusWithoutImprovement,
     StopCriterion stopCriterion;
     stopCriterion.maxRadiusWithoutImprovement = maxRadiusWithoutImprovement;
     getBestSPRFromPruneRec(stopCriterion, 
-        pruneNode,
         regraft,
         0.0,
         ks,

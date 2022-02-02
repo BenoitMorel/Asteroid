@@ -112,7 +112,6 @@ private:
   }
 
   void getBestSPRFromPruneRec(StopCriterion stopCriterion,
-    corax_unode_t *prune,
     corax_unode_t *regraft,
     double lastScore,
     const std::vector<unsigned int> &ks,
