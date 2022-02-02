@@ -82,7 +82,6 @@ double Asteroid::computeLength(const PLLUnrootedTree &speciesTree)
     }
   }
   ParallelContext::sumDouble(res);
-  //_computeAvDistances();
   Logger::timed << "after compute pruned " << std::endl;
   return res;
 }
@@ -237,7 +236,7 @@ void Asteroid::precomputeSPRDiffFromPrune(unsigned int k,
 void Asteroid::getBestSPRFromPruneRec(StopCriterion stopCriterion,
     corax_unode_t *prune,
     corax_unode_t *regraft,
-    double lastScore,
+    double lastBestScore,
     const std::vector<unsigned int> &ks,
     corax_unode_t *&bestRegraft,
     double &bestScore)
@@ -260,9 +259,10 @@ void Asteroid::getBestSPRFromPruneRec(StopCriterion stopCriterion,
   }
   ParallelContext::sumDouble(newScore);
   
-  if (newScore > lastScore) {
+  if (newScore > lastBestScore) {
     // Improvement, search further
     stopCriterion.noImprovement = 0;
+    lastBestScore = newScore;
   } else {
     stopCriterion.noImprovement++;
   }
@@ -273,8 +273,8 @@ void Asteroid::getBestSPRFromPruneRec(StopCriterion stopCriterion,
   if (regraft->next) {
     auto left = PLLUnrootedTree::getLeft(regraft);
     auto right = PLLUnrootedTree::getRight(regraft);
-    getBestSPRFromPruneRec(stopCriterion, prune, left, newScore, ks, bestRegraft, bestScore);
-    getBestSPRFromPruneRec(stopCriterion, prune, right, newScore, ks, bestRegraft, bestScore);
+    getBestSPRFromPruneRec(stopCriterion, prune, left, lastBestScore, ks, bestRegraft, bestScore);
+    getBestSPRFromPruneRec(stopCriterion, prune, right, lastBestScore, ks, bestRegraft, bestScore);
   }
 }
 

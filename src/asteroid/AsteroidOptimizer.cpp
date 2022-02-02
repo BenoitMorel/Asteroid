@@ -64,6 +64,7 @@ bool wasInvolved(corax_unode_t *node,
 bool AsteroidOptimizer::computeAndApplyBestSPR()
 {
   unsigned int maxRadiusWithoutImprovement = 3;
+  unsigned int maxRadiusWithoutImprovementThorough = 10;
   Logger::timed << "last score " << _lastScore << std::endl;
   std::vector<SPRMove> bestMoves;
   double epsilon = 0.00000001;
@@ -73,7 +74,7 @@ bool AsteroidOptimizer::computeAndApplyBestSPR()
   if (bestMoves.size() == 0 || bestMoves[0].score < epsilon) {
     Logger::info << "Local search failed, trying with max radius..." << std::endl;
     _asteroid.getBestSPR(_speciesTree, 
-        99999999,
+        maxRadiusWithoutImprovementThorough,
         bestMoves);
     if (bestMoves.size() == 0 || bestMoves[0].score < epsilon) {
       Logger::info << "Global search failed, stopping" << std::endl;
