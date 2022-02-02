@@ -209,9 +209,7 @@ public:
   void mapNodesWithInducedTree(PLLUnrootedTree &inducedTree,
       const NodeVector &superPostOrderNodes,
       NodeVector &superToInduced,
-      NodeVector &superToInducedRegraft,
-      std::vector<NodeSet> &inducedToSuper,
-      std::vector<NodeSet> &inducedToSuperRegraft
+      NodeVector &superToInducedRegraft
       ) const;
 
 private:

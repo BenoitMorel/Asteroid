@@ -36,8 +36,6 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
   _spidToGid.resize(_K);
   _superToInducedNodes.resize(_K);
   _superToInducedNodesRegraft.resize(_K);
-  _inducedToSuperNodes.resize(_K);
-  _inducedToSuperNodesRegraft.resize(_K);
   _pruneRegraftDiff.resize(_K);
   for (unsigned int k = 0; k < _K; ++k) {
     _spidToGid[k].resize(speciesTree.getLeavesNumber());
@@ -117,9 +115,7 @@ void Asteroid::_updateInducedTrees(const PLLUnrootedTree &speciesTree)
     speciesTree.mapNodesWithInducedTree(*_inducedSpeciesTrees[k],
         superPostOrderNodes,
         _superToInducedNodes[k],
-        _superToInducedNodesRegraft[k],
-        _inducedToSuperNodes[k],
-        _inducedToSuperNodesRegraft[k]);
+        _superToInducedNodesRegraft[k]);
     InternodeDistance::computeFromSpeciesTree(*_inducedSpeciesTrees[k],
          _prunedSpeciesMatrices[k]);
   }
@@ -166,8 +162,7 @@ void Asteroid::precomputeSPRDiffRec(unsigned int k,
     corax_unode_t *Vsminus1, 
     double delta_Vsminus2_Wp, // previous deltaAB
     corax_unode_t *Vs, 
-    double diffMinus1, // L_s-1
-    std::vector<double> &regraftDiff)
+    double diffMinus1) // L_s-1
 {
   corax_unode_t *Ws = getOtherNext(Vs, Vsminus1->back)->back; 
   // compute L_s
@@ -195,14 +190,14 @@ void Asteroid::precomputeSPRDiffRec(unsigned int k,
   }
   double diff = diffMinus1 + 0.125 * (deltaAB + deltaCD - deltaAC - deltaBD);
   //Logger::info << regraftDiff.size() << " " << Vs->node_index << std::endl;
-  regraftDiff[Vs->node_index] = diff;
-  regraftDiff[Vs->back->node_index] = diff;
+  _pruneRegraftDiff[k][Wp->node_index][Vs->node_index] = diff;
+  _pruneRegraftDiff[k][Wp->node_index][Vs->back->node_index] = diff;
   // recursive call
   if (Vs->back->next) {
     precomputeSPRDiffRec(k, s+1, W0, Wp, Ws, Vs, deltaAB, Vs->back->next, 
-        diff, regraftDiff);
+        diff);
     precomputeSPRDiffRec(k, s+1, W0, Wp, Ws, Vs, deltaAB, Vs->back->next->next, 
-        diff, regraftDiff);
+        diff);
   }
 }
 
@@ -232,7 +227,7 @@ void Asteroid::precomputeSPRDiffFromPrune(unsigned int k,
       corax_unode_t *Wsminus1 = W0;
       double deltaAB = 0.0; // not used at first iteration
       precomputeSPRDiffRec(k, s, W0, Wp,  Wsminus1, V, deltaAB,
-          V1, 0.0, regraftDiff);
+          V1, 0.0);
     }
   }
 }
@@ -259,6 +254,7 @@ void Asteroid::getBestSPRFromPruneRec(StopCriterion stopCriterion,
       continue;
     }
     auto iRegraft = _superToInducedNodesRegraft[k][regraft->node_index]; 
+    assert(iRegraft);
     auto dk =  _pruneRegraftDiff[k][iPrune->node_index][iRegraft->node_index];
     newScore += dk;  
   }

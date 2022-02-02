@@ -137,8 +137,7 @@ private:
     corax_unode_t *Vsminus1, 
     double delta_Vsminus2_Wp, // previous deltaAB
     corax_unode_t *Vs, 
-    double diffMinus1, // L_s-1
-    std::vector<double> &regraftDiff);
+    double diffMinus1); // L_s-1
 
   bool getBestSPRFromPrune(unsigned int maxRadiusWithoutImprovement,
     corax_unode_t *pruneNode,
