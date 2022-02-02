@@ -586,7 +586,7 @@ std::string PLLUnrootedTree::getSubtreeString(corax_unode_t *subtree, UnodePrint
 
 std::string PLLUnrootedTree::getNewickString(UnodePrinter f,
       corax_unode_t *root, 
-      bool rooted)
+      bool rooted) const
 {
   std::stringstream ss;
   if (!root) {
@@ -926,8 +926,6 @@ void mapNodesWithInducedTreeAux(corax_unode_t *superNode,
     auto it = inducedLabelToLeaf.find(std::string(superNode->label));
     if (it != inducedLabelToLeaf.end()) {
       auto inducedLeaf = it->second;
-      assert(!superToInduced[superNode->node_index]);
-      assert(!inducedLeaf->next);
       superToInduced[superNode->node_index] = inducedLeaf;
       superToInducedRegraft[superNode->node_index] = inducedLeaf;
     }
@@ -940,14 +938,12 @@ void mapNodesWithInducedTreeAux(corax_unode_t *superNode,
   if (!inducedRight && !inducedLeft) {
     return;
   } else if (!inducedRight) {
-    assert(!superToInduced[superNode->node_index]);
     superToInduced[superNode->node_index] = inducedLeft;
     superToInducedRegraft[superNode->node_index] = inducedLeft;
     fillWithChildren(superRight, 
         inducedLeft,
         superToInducedRegraft);
   } else if (!inducedLeft) {
-    assert(!superToInduced[superNode->node_index]);
     superToInduced[superNode->node_index] = inducedRight;
     superToInducedRegraft[superNode->node_index] = inducedRight;
     fillWithChildren(superLeft, 
@@ -959,7 +955,6 @@ void mapNodesWithInducedTreeAux(corax_unode_t *superNode,
       return;
     }
     auto inducedParent = getOtherNext(inducedLeft->back, inducedRight->back);
-    assert(!superToInduced[superNode->node_index]);
     superToInduced[superNode->node_index] = inducedParent;
     superToInducedRegraft[superNode->node_index] = inducedParent;
   }

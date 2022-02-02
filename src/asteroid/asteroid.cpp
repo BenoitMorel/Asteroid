@@ -61,50 +61,6 @@ static DistanceMatrix initDistancetMatrix(unsigned int N,
   return DistanceMatrix(N, nullDistances); 
 }
   
-void fillDistanceMatricesAstrid(GeneTrees &geneTrees, 
-    unsigned int speciesNumber, 
-    const IDParam &params,
-    std::vector<DistanceMatrix> &distanceMatrices)
-{
-  DistanceMatrix sum = initDistancetMatrix(speciesNumber,
-      speciesNumber, 
-      0.0);
-  DistanceMatrix denominator = initDistancetMatrix(speciesNumber,
-      speciesNumber, 
-      0.0);
-  for (unsigned int k = 0; k < geneTrees.size(); ++k) {
-    DistanceMatrix temp = initDistancetMatrix(speciesNumber,
-      speciesNumber, 
-      std::numeric_limits<double>::infinity());
-    auto &geneTree = *geneTrees[k];
-    InternodeDistance::computeFromGeneTree(geneTree, temp, params);
-    for (unsigned int i = 0; i < speciesNumber; ++i) {
-      for (unsigned int j = 0; j < speciesNumber; ++j) {
-        if (temp[i][j] != std::numeric_limits<double>::infinity()) {
-          sum[i][j] += temp[i][j];
-          temp[i][j] = std::numeric_limits<double>::infinity();
-          denominator[i][j] += 1.0;
-        }
-      }
-    }
-  }
-  for (unsigned int i = 0; i < speciesNumber; ++i) {
-    for (unsigned int j = 0; j < speciesNumber; ++j) {
-      if (i ==j) {
-        continue;
-      }
-      if (denominator[i][j] == 0.0) {
-        Logger::info << "Warning: missing entry in the distance matrix" << std::endl;
-        
-      } else {
-        sum[i][j] /= denominator[i][j];
-      }
-    }
-  }
-  distanceMatrices.push_back(sum);
-}
-
-
 void fillDistanceMatricesAsteroid(GeneTrees &geneTrees, 
     const IDParam &params,
     std::vector<DistanceMatrix> &distanceMatrices)
@@ -244,9 +200,10 @@ void getDataNoCorrection(
         const std::vector<DistanceMatrix> &distanceMatrices,
         std::vector<DistanceMatrix> &astridDistanceMatrices,
         BoolMatrix & astridPerFamilyCoverage,
+        const UIntMatrix &asteroidGidToSpid,
+        UIntMatrix &astridGidToSpid,
         unsigned int speciesNumber)
 {
-
   unsigned int K = distanceMatrices.size(); 
   DistanceMatrix astridDistanceMatrix = initDistancetMatrix(speciesNumber,
       speciesNumber,
@@ -254,15 +211,20 @@ void getDataNoCorrection(
   DistanceMatrix denominator = initDistancetMatrix(speciesNumber,
       speciesNumber,
       0.0);
+  for (unsigned int k = 0; k < K; ++k) {
+    auto geneNumber = asteroidGidToSpid[k].size();
+    for (unsigned int igid = 0; igid < geneNumber; ++igid) {
+      auto ispid = asteroidGidToSpid[k][igid];
+      for (unsigned int jgid = 0; jgid < geneNumber; ++jgid) {
+        auto jspid = asteroidGidToSpid[k][jgid];
+        astridDistanceMatrix[ispid][jspid] += 
+          distanceMatrices[k][igid][jgid];
+        denominator[ispid][jspid] += 1.0; 
+      }
+    }
+  }
   for (unsigned int i = 0; i < speciesNumber; ++i) {
     for (unsigned int j = 0; j < speciesNumber; ++j) {
-      for (unsigned int k = 0; k < K; ++k) {
-        if (std::numeric_limits<double>::infinity() 
-            != distanceMatrices[k][i][j]) {
-          astridDistanceMatrix[i][j] += distanceMatrices[k][i][j];
-          denominator[i][j] += 1.0; 
-        }
-      }
       ParallelContext::sumDouble(astridDistanceMatrix[i][j]);
       ParallelContext::sumDouble(denominator[i][j]);
       if (denominator[i][j] != 0.0) {
@@ -273,33 +235,43 @@ void getDataNoCorrection(
   astridDistanceMatrices.push_back(astridDistanceMatrix);
   std::vector<bool> astridCoverage(speciesNumber, true);
   astridPerFamilyCoverage.push_back(astridCoverage);
+  astridGidToSpid.resize(1);
+  for (unsigned int i = 0;  i < speciesNumber; ++i) {
+    astridGidToSpid[0].push_back(i);
+  }
 }
 
 double optimize(PLLUnrootedTree &speciesTree,
     const std::vector<DistanceMatrix>  &asteroidDistanceMatrices,
     const BoolMatrix &asteroidPerFamilyCoverage,
-    const UIntMatrix &gidToSpid,
+    const UIntMatrix &asteroidGidToSpid,
     bool noCorrection)
 {
   const std::vector<DistanceMatrix> *distanceMatrices = nullptr;
   const BoolMatrix *perFamilyCoverage = nullptr;
+  const UIntMatrix *gidToSpid = nullptr; 
   std::vector<DistanceMatrix> astridDistanceMatrices;
   BoolMatrix astridPerFamilyCoverage;
+  UIntMatrix astridGidToSpid;
   if (noCorrection) {
     getDataNoCorrection(asteroidDistanceMatrices,
         astridDistanceMatrices,
         astridPerFamilyCoverage,
+        asteroidGidToSpid,
+        astridGidToSpid,
         speciesTree.getLeavesNumber());
     perFamilyCoverage = &astridPerFamilyCoverage;
     distanceMatrices = &astridDistanceMatrices;
+    gidToSpid = &astridGidToSpid;
   } else {
     perFamilyCoverage = &asteroidPerFamilyCoverage;
     distanceMatrices = &asteroidDistanceMatrices;
+    gidToSpid = &asteroidGidToSpid;
   }
   Logger::timed << "Initializing optimizer... " << std::endl;
   AsteroidOptimizer optimizer(speciesTree,
       *perFamilyCoverage,
-      gidToSpid,
+      *gidToSpid,
       *distanceMatrices);
   Logger::timed << "Starting tree search... " << std::endl;
   return optimizer.optimize();

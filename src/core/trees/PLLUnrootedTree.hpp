@@ -94,7 +94,7 @@ public:
   void save(const std::string &fileName); 
   std::string getNewickString(UnodePrinter f = defaultUnodePrinter,
       corax_unode_t *root = nullptr, 
-      bool rooted = false);
+      bool rooted = false) const;
   static std::string getSubtreeString(corax_unode_t *subtree, UnodePrinter f = defaultUnodePrinter);
   
   std::string getInducedNewick(const std::vector<bool> &coverage) const;
