@@ -201,10 +201,8 @@ void Asteroid::precomputeSPRDiffRec(unsigned int k,
 }
 
 void Asteroid::precomputeSPRDiffFromPrune(unsigned int k, 
-    corax_unode_t *pruneNode,
-    std::vector<double> &regraftDiff)
+    corax_unode_t *pruneNode)
 {
-  std::fill(regraftDiff.begin(), regraftDiff.end(), 0.0);
   auto Wp = pruneNode;
   if (!Wp->back->next) {
     return;
@@ -238,6 +236,7 @@ void Asteroid::getBestSPRFromPruneRec(StopCriterion stopCriterion,
     corax_unode_t *regraft,
     double lastBestScore,
     const std::vector<unsigned int> &ks,
+    const std::vector<unsigned int> &inducedPruneIndices,
     corax_unode_t *&bestRegraft,
     double &bestScore)
 {
@@ -247,15 +246,16 @@ void Asteroid::getBestSPRFromPruneRec(StopCriterion stopCriterion,
     return;
   }
   double newScore = 0.0;
-  for (auto k: ks) {
-    auto iPrune = _superToInducedNodes[k][prune->node_index]; 
-    if (!iPrune) {
-      continue;
-    }
+  // iterate over all induced species tree on which the pruned
+  // subtree is non empty
+  for (unsigned int i = 0; i < ks.size(); ++i) {
+    auto k = ks[i];
+    auto inducedPruneIndex = inducedPruneIndices[i];
     auto iRegraft = _superToInducedNodesRegraft[k][regraft->node_index]; 
-    assert(iRegraft);
-    auto dk =  _pruneRegraftDiff[k][iPrune->node_index][iRegraft->node_index];
-    newScore += dk;  
+    // diff is the diff of the score after applying this SPR
+    // move to this induced species tree
+    auto diff =  _pruneRegraftDiff[k][inducedPruneIndex][iRegraft->node_index];
+    newScore += diff;  
   }
   ParallelContext::sumDouble(newScore);
   
@@ -273,8 +273,8 @@ void Asteroid::getBestSPRFromPruneRec(StopCriterion stopCriterion,
   if (regraft->next) {
     auto left = PLLUnrootedTree::getLeft(regraft);
     auto right = PLLUnrootedTree::getRight(regraft);
-    getBestSPRFromPruneRec(stopCriterion, prune, left, lastBestScore, ks, bestRegraft, bestScore);
-    getBestSPRFromPruneRec(stopCriterion, prune, right, lastBestScore, ks, bestRegraft, bestScore);
+    getBestSPRFromPruneRec(stopCriterion, prune, left, lastBestScore, ks,inducedPruneIndices,  bestRegraft, bestScore);
+    getBestSPRFromPruneRec(stopCriterion, prune, right, lastBestScore, ks, inducedPruneIndices,  bestRegraft, bestScore);
   }
 }
 
@@ -291,9 +291,12 @@ bool Asteroid::getBestSPRFromPrune(unsigned int maxRadiusWithoutImprovement,
   }
   
   std::vector<unsigned int> ks;
+  std::vector<unsigned int> inducedPruneIndices;
   for (unsigned int k = 0; k < _K; ++k) {
-    if (_superToInducedNodes[k][pruneNode->node_index]) {
+    auto inducedPrune = _superToInducedNodes[k][pruneNode->node_index];
+    if (inducedPrune) {
       ks.push_back(k);
+      inducedPruneIndices.push_back(inducedPrune->node_index);
     }
   }
 
@@ -314,6 +317,7 @@ bool Asteroid::getBestSPRFromPrune(unsigned int maxRadiusWithoutImprovement,
         regraft,
         0.0,
         ks,
+        inducedPruneIndices,
         bestRegraftNode,
         bestDiff);
     if (bestDiff > oldBestDiff) {
@@ -333,7 +337,9 @@ void Asteroid::getBestSPR(PLLUnrootedTree &speciesTree,
   bestMoves.clear();
   for (unsigned int k = 0; k < _K; ++k) {
     for (auto pruneNode: _inducedSpeciesTrees[k]->getPostOrderNodes()) {
-      precomputeSPRDiffFromPrune(k, pruneNode, _pruneRegraftDiff[k][pruneNode->node_index]);
+      auto &regraftDiff = _pruneRegraftDiff[k][pruneNode->node_index];
+      std::fill(regraftDiff.begin(), regraftDiff.end(), 0.0);
+      precomputeSPRDiffFromPrune(k, pruneNode);
     }
   }
   for (auto pruneNode: speciesTree.getPostOrderNodes()) {

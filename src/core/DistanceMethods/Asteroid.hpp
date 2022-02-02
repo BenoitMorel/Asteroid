@@ -29,6 +29,12 @@ struct SPRMove {
   }
 };
 
+struct BestSPRCell {
+  corax_unode_t *regraft;
+  double diff;
+};
+using BestSPRMatrix = std::vector< std::vector<BestSPRCell> >;
+
 class Asteroid {
 public:
   Asteroid(const PLLUnrootedTree &speciesTree, 
@@ -110,6 +116,7 @@ private:
     corax_unode_t *regraft,
     double lastScore,
     const std::vector<unsigned int> &ks,
+    const std::vector<unsigned int> &inducedPruneIndices,
     corax_unode_t *&bestRegraft,
     double &bestScore);
   
@@ -123,11 +130,12 @@ private:
   // _pows[i] == pow(2, i) (precomputed to speedup computations)
   std::vector<double> _pows;
 
+
+
   void _computeAvDistances();
 
   void precomputeSPRDiffFromPrune(unsigned int k, 
-      corax_unode_t *prunedNode,
-    std::vector<double> &regraftDiff);
+      corax_unode_t *prunedNode);
 
   void precomputeSPRDiffRec(unsigned int k,
       unsigned int s,
