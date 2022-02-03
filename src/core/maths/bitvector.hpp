@@ -41,6 +41,8 @@
 #include "std.hpp"
 #include <functional>
 
+
+
 namespace genesis {
 namespace utils {
 
@@ -425,6 +427,8 @@ struct hash<genesis::utils::Bitvector>
 };
 
 } // namespace std
+
+using BitVector = genesis::utils::Bitvector;
 
 #endif // include guard
 

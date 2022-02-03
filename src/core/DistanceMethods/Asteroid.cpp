@@ -104,11 +104,6 @@ void Asteroid::_computeInducedTrees(const PLLUnrootedTree &speciesTree)
     }
     _inducedSpeciesTrees[k]->reindexLeaves(labelToGid);
   }
-  _updateInducedTrees(speciesTree);
-}
-
-void Asteroid::_updateInducedTrees(const PLLUnrootedTree &speciesTree)
-{
   auto superPostOrderNodes = speciesTree.getPostOrderNodes();
   for (unsigned int k = 0; k < _K; ++k) {
     speciesTree.mapNodesWithInducedTree(*_inducedSpeciesTrees[k],
@@ -119,8 +114,6 @@ void Asteroid::_updateInducedTrees(const PLLUnrootedTree &speciesTree)
          _prunedSpeciesMatrices[k]);
   }
 }
-
-
 
 void Asteroid::_computeAvDistances()
 {

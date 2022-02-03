@@ -29,12 +29,11 @@ struct SPRMove {
   }
 };
 
-struct BestSPRCell {
-  corax_unode_t *regraft;
-  double diff;
-};
-using BestSPRMatrix = std::vector< std::vector<BestSPRCell> >;
-
+/**
+ *  Implements the global prune length evaluation for a given
+ *  species tree and its SPR neighbors, according to the
+ *  Asteroid algorithm
+ */
 class Asteroid {
 public:
   Asteroid(const PLLUnrootedTree &speciesTree, 
@@ -58,8 +57,6 @@ public:
       unsigned int maxRadiusWithoutImprovement,
       std::vector<SPRMove> &bestMoves);
 
-  void _computeInducedTrees(const PLLUnrootedTree &speciesTree);
-  void _updateInducedTrees(const PLLUnrootedTree &speciesTree);
 
 private:
   struct StopCriterion {
@@ -71,39 +68,48 @@ private:
       noImprovement(0)
       {}
   };
-  // Internal implementation
-  //
   // Index convention:
   // - k -> gene tree index
   // - gid: node_index in the induced species tree
   // - spid: node_index in the species tree
-  //
-  //
 
   // _gidToSpid[k][gid] == spid
   const UIntMatrix &_gidToSpid;
   // _spidToGid[k][spid] == gid
   UIntMatrix _spidToGid;
-  // _precomputeSPRDiffRecMissing[k][i][j] is the distance
-  // between species i and j for the gene family k
-  // this value is only valid if no inf 
+  // internode gene distance matrices
   const std::vector<DistanceMatrix> &_geneDistanceMatrices;
   // number of families 
   size_t _K;
   // _perFamilyCoverage[k][i] is true if the family k covers the species i
   BoolMatrix _perFamilyCoverage;
   std::vector<unsigned int> _inducedNodeNumber;
-
-  // _prunedSpeciesMatrices[k] is the internode distance for the
-  // species tree induced by the family k
+  // _pows[i] == pow(2, i) (precomputed to speedup computations)
+  std::vector<double> _pows;
+  // trees induced by the current species tree and
+  // each family coverage pattern
   std::vector<std::shared_ptr<PLLUnrootedTree> > _inducedSpeciesTrees; 
-  std::vector<NodeVector> _superToInducedNodes; 
-  std::vector<NodeVector> _superToInducedNodesRegraft; 
-  std::vector< std::vector<NodeSet> > _inducedToSuperNodes; 
-  std::vector< std::vector<NodeSet> > _inducedToSuperNodesRegraft; 
+  // internode distance matrices of the induced species trees
   std::vector<DistanceMatrix> _prunedSpeciesMatrices;
-  std::vector<MatrixDouble> _pruneRegraftDiff;
+  // mapping between species tree prining nodes and 
+  // induced tree pruning nodes
+  std::vector<NodeVector> _superToInducedNodes; 
+  // mapping between species tree regrafting nodes and 
+  // induced tree regrafting nodes
+  std::vector<NodeVector> _superToInducedNodesRegraft;
+  // average distance between every pair of species subtrees 
+  // Precomputing it allows to evaluate SPR moves in
+  // constant time
+  // this is the Delta matrix in the FastME2 supp mat paper
+  //
   std::vector<MatrixDouble> _avDistances;
+  // _pruneRegraftDiff[k][i][j] stores the score diff
+  // resulting in pruning the node with index i and regrafting
+  // it at the node j in the induced tree k
+  std::vector<MatrixDouble> _pruneRegraftDiff;
+  
+  
+  
   double getCell(size_t sp1, size_t sp2, size_t k) {
     return _avDistances[k][sp1][sp2];
   }
@@ -119,18 +125,10 @@ private:
     corax_unode_t *&bestRegraft,
     double &bestScore);
   
-  // _hasChildren[i][k] == true if there is at least one leaf
-  // under i that belongs to the species tree induced by the
-  // family k
-  BoolMatrix _hasChildren;
-  // _belongsToPruned[i][k] == true if the node i belongs to
-  // the species tree induced by the family k
-  BoolMatrix _belongsToPruned;
-  // _pows[i] == pow(2, i) (precomputed to speedup computations)
-  std::vector<double> _pows;
 
 
 
+  void _computeInducedTrees(const PLLUnrootedTree &speciesTree);
   void _computeAvDistances();
 
   void precomputeSPRDiffFromPrune(unsigned int k, 

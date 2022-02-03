@@ -13,6 +13,7 @@
 #include <set>
 #include <algorithm>
 #include <IO/ParallelOfstream.hpp>
+#include <maths/bitvector.hpp>
 
 using TreePtr = std::shared_ptr<PLLUnrootedTree>;
 using Trees = std::vector<TreePtr>;
@@ -27,6 +28,10 @@ struct ScoredTree {
 };
 using ScoredTrees = std::vector<ScoredTree>;
 
+
+/**
+ *  Read all trees from inputGeneTreeFile
+ */
 void parseTrees(const std::string &inputGeneTreeFile,
     GeneTrees &geneTrees)
 {
@@ -42,17 +47,10 @@ void parseTrees(const std::string &inputGeneTreeFile,
   }
 }
 
-void setGeneTreeSpid(PLLUnrootedTree &geneTree,
-    const GeneSpeciesMapping &mappings,
-    const StringToUint &speciesToSpid)
-{
-  for (auto leaf: geneTree.getLeaves()) {
-    const auto &species = mappings.getSpecies(leaf->label);
-    intptr_t spid = static_cast<intptr_t>(speciesToSpid.at(species));
-    leaf->data = reinterpret_cast<void*>(spid);
-  }
-}
-
+/**
+ *  Creates a matrix of doubles of size NxM and fills it
+ *  with value
+ */
 static DistanceMatrix initDistancetMatrix(unsigned int N,
     unsigned int M,
     double value)
@@ -60,8 +58,12 @@ static DistanceMatrix initDistancetMatrix(unsigned int N,
   std::vector<double> nullDistances(M, value);
   return DistanceMatrix(N, nullDistances); 
 }
-  
-void fillDistanceMatricesAsteroid(GeneTrees &geneTrees, 
+ 
+/**
+ *  Computes the gene internode distance matrices of
+ *  each gene tree
+ */
+void fillDistanceMatrices(GeneTrees &geneTrees, 
     const IDParam &params,
     std::vector<DistanceMatrix> &distanceMatrices)
 {
@@ -77,6 +79,9 @@ void fillDistanceMatricesAsteroid(GeneTrees &geneTrees,
   }
 }
 
+/**
+ *  Initialize the program state
+ */
 void init(Arguments &arg)
 {
   ParallelContext::init(0);
@@ -86,6 +91,9 @@ void init(Arguments &arg)
   Random::setSeed(static_cast<unsigned int>(arg.seed));
 }
 
+/**
+ *  Closes the program state
+ */
 void close()
 {
   Logger::close();
@@ -101,8 +109,16 @@ void readGeneTrees(const std::string &inputGeneTreeFile,
   Logger::timed << "Number of gene trees:" << geneTrees.size() << std::endl;
 }
 
+/**
+ *  Fills the gene-to-species mapping object:
+ *  - from the input mapping file
+ *  - or from the gene tree leaf labels
+ *  Identifies all the species labels and assign
+ *  them a SPID
+ *
+ */
 void extractMappings(const Arguments &arg,
-    GeneTrees &geneTrees,
+    const GeneTrees &geneTrees,
     GeneSpeciesMapping &mappings,
     StringToUint &speciesToSpid)
 {
@@ -125,15 +141,13 @@ void extractMappings(const Arguments &arg,
 }
 
 
-void applyMappings(GeneSpeciesMapping &mappings,
-    StringToUint &speciesToSpid,
-    GeneTrees &geneTrees)
-{
-  for (auto geneTree: geneTrees) {
-    setGeneTreeSpid(*geneTree, mappings, speciesToSpid);
-  }
-}
 
+/**
+ *  Computes gidToSpid, which is a mapping between
+ *  the gene IDs and the species IDs (for the gene 
+ *  and species leaves). The gid is 
+ *  also stored in the data field of the gene leaves
+ */
 void fillGidToSpid(GeneTrees &geneTrees,
     GeneSpeciesMapping &mappings,
     StringToUint &speciesToSpid,
@@ -160,12 +174,14 @@ void computeGeneDistances(const Arguments &arg,
   Logger::timed << "Computing internode distances from the gene trees..." << std::endl;
   IDParam idParams;
   idParams.minBL = arg.minBL;
- 
-  fillDistanceMatricesAsteroid(geneTrees, 
+  fillDistanceMatrices(geneTrees, 
       idParams, 
       distanceMatrices);
 }
   
+/**
+ *  Compute the coverage pattern of each gene tree
+ */
 void computeFamilyCoverage(
     GeneTrees &geneTrees,
     unsigned int speciesNumber,
@@ -175,15 +191,25 @@ void computeFamilyCoverage(
   Logger::timed << "Computing coverage..." << std::endl;
   perFamilyCoverage = BoolMatrix(geneTrees.size(),
       std::vector<bool>(speciesNumber, false));
+  size_t total = 0;
   for (unsigned int k = 0; k < geneTrees.size(); ++k) {
     for (auto geneLeaf: geneTrees[k]->getLeaves()) {
       auto gid = reinterpret_cast<intptr_t>(geneLeaf->data);
       auto spid = gidToSpid[k][gid];
       perFamilyCoverage[k][spid] = true;
+      total++;
     }
   }
+  Logger::timed << "Total number of genes: " << total << std::endl;
+  Logger::timed << "Sampling proportion: " 
+    << double(total) / double(geneTrees.size() * speciesNumber)
+    << std::endl;
 } 
 
+/**
+ *  Assign to each MPI rank a subset of the gene 
+ *  trees in order to parallelize computations
+ */
 void getPerCoreGeneTrees(GeneTrees &geneTrees,
     GeneTrees &perCoreGeneTrees)
 {
