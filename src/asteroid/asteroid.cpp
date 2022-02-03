@@ -399,7 +399,15 @@ int main(int argc, char * argv[])
   SpeciesTrees startingSpeciesTrees =
     generateRandomSpeciesTrees(speciesLabels, 
         speciesToSpid,
-        arg.randomStartingTrees);
+        std::max(arg.randomStartingTrees, 1u));
+  if (arg.randomStartingTrees < 1) {
+    optimize(*startingSpeciesTrees[0], 
+          distanceMatrices, 
+          perFamilyCoverage,
+          gidToSpid,
+          true);
+    
+  }
   ScoredTrees scoredTrees = search(startingSpeciesTrees,
       distanceMatrices,
       perFamilyCoverage,
