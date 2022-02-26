@@ -5,7 +5,7 @@
 #include <vector>
 #include <unordered_set>
 #include <trees/PLLUnrootedTree.hpp>
-
+#include <maths/bitvector.hpp>
 
 using BoolMatrix = std::vector< std::vector<bool> >;
 using UIntMatrix = std::vector< std::vector<unsigned int> >;
@@ -37,7 +37,7 @@ struct SPRMove {
 class Asteroid {
 public:
   Asteroid(const PLLUnrootedTree &speciesTree, 
-      const BoolMatrix &perFamilyCoverage,
+      const std::vector<BitVector> &perFamilyCoverage,
       const UIntMatrix &gidToSpid,
       const std::vector<DistanceMatrix> &geneDistanceMatrices);
   virtual ~Asteroid() {}
@@ -82,7 +82,7 @@ private:
   // number of families 
   size_t _K;
   // _perFamilyCoverage[k][i] is true if the family k covers the species i
-  BoolMatrix _perFamilyCoverage;
+  std::vector<BitVector> _perFamilyCoverage;
   std::vector<unsigned int> _inducedNodeNumber;
   // _pows[i] == pow(2, i) (precomputed to speedup computations)
   std::vector<double> _pows;

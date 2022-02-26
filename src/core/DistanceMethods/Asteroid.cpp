@@ -24,7 +24,7 @@ static DistanceMatrix getNullMatrix(unsigned int N,
 }
 
 Asteroid::Asteroid(const PLLUnrootedTree &speciesTree, 
-      const BoolMatrix &perFamilyCoverage,
+      const std::vector<BitVector> &perFamilyCoverage,
       const UIntMatrix &gidToSpid,
       const std::vector<DistanceMatrix> &geneDistanceMatrices):
   _gidToSpid(gidToSpid),
@@ -181,7 +181,6 @@ void Asteroid::precomputeSPRDiffRec(unsigned int k,
     deltaAC += _pows[s] * getCell(W0->node_index, Ws->node_index, k);
   }
   double diff = diffMinus1 + 0.125 * (deltaAB + deltaCD - deltaAC - deltaBD);
-  //Logger::info << regraftDiff.size() << " " << Vs->node_index << std::endl;
   _pruneRegraftDiff[k][Wp->node_index][Vs->node_index] = diff;
   _pruneRegraftDiff[k][Wp->node_index][Vs->back->node_index] = diff;
   // recursive call

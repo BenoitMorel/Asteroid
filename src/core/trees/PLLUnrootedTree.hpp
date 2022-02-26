@@ -11,7 +11,7 @@
 #include <maths/Random.hpp>
 #include <functional>
 #include <cstring>
-
+#include <maths/bitvector.hpp>
 
 
 using UnodePrinter = 
@@ -40,6 +40,7 @@ public:
   static std::unique_ptr<PLLUnrootedTree> buildFromStrOrFile(const std::string &strOrFile);
 
   std::shared_ptr<PLLUnrootedTree> getInducedTree(const std::vector<bool> &okNodeIndices) const;
+  std::shared_ptr<PLLUnrootedTree> getInducedTree(const BitVector &okNodeIndice) const;
 
   /**
    *  Construct a random tree from a set of taxa labels

@@ -64,7 +64,7 @@ bool wasInvolved(corax_unode_t *node,
 bool AsteroidOptimizer::computeAndApplyBestSPR()
 {
   unsigned int maxRadiusWithoutImprovement = 3;
-  unsigned int maxRadiusWithoutImprovementThorough = 10;
+  unsigned int maxRadiusWithoutImprovementThorough = 10000;
   Logger::timed << "last score " << _lastScore << std::endl;
   std::vector<SPRMove> bestMoves;
   double epsilon = 0.00000001;
@@ -132,7 +132,7 @@ bool AsteroidOptimizer::computeAndApplyBestSPR()
 
 
 AsteroidOptimizer::AsteroidOptimizer(PLLUnrootedTree &speciesTree,
-    const BoolMatrix &perFamilyCoverage,
+    const std::vector<BitVector> &perFamilyCoverage,
     const UIntMatrix &gidToSpid,
     const std::vector<DistanceMatrix> &distanceMatrices):
   _speciesTree(speciesTree),

@@ -904,6 +904,15 @@ static corax_unode_t *getOtherNext(corax_unode_t *n1,
     return n1->next;
   }
 }
+  
+std::shared_ptr<PLLUnrootedTree> PLLUnrootedTree::getInducedTree(const BitVector &okNodeIndice) const
+{
+  std::vector<bool> v(okNodeIndice.size(), false);
+  for (unsigned int i = 0; i < okNodeIndice.size(); ++i) {
+    v[i] = okNodeIndice[i];
+  }
+  return getInducedTree(v);
+}
 
 void fillWithChildren(corax_unode_t *super, 
     corax_unode_t *induced,

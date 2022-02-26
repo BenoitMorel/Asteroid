@@ -15,7 +15,7 @@ public:
    *  Init the optimizer
    */
   AsteroidOptimizer(PLLUnrootedTree &speciesTree,
-      const BoolMatrix &perFamilyCoverage,
+      const std::vector<BitVector> &perFamilyCoverage,
       const UIntMatrix &gidToSpid,
       const std::vector<DistanceMatrix> &distanceMatrices);
   virtual ~AsteroidOptimizer() {}
