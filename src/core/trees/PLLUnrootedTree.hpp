@@ -197,6 +197,10 @@ public:
    *  reorder them in the utree::nodes buffer
    */
   void reindexLeaves(const StringToUint &labelToIndex);
+  /**
+   *  Sort the leaves by lexicographic order on their labels
+   */
+  void sortLeaves();
 
   /**
    *  Return the leaf node that has the label label,

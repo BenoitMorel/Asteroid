@@ -837,6 +837,21 @@ void PLLUnrootedTree::reindexLeaves(const StringToUint &labelToIndex)
   }
 }
  
+void PLLUnrootedTree::sortLeaves()
+{
+  std::map<std::string, corax_unode_t *> labelToNode;
+  for (auto leaf: getLeaves()) {
+    labelToNode.insert({std::string(leaf->label), leaf});
+  }
+  unsigned int i = 0;
+  for (auto it: labelToNode) {
+    auto node = it.second;
+    _tree->nodes[i] = node;
+    node->node_index = i;
+    i++;
+  }
+}
+ 
 static std::string getInducedNewickRec(corax_unode_t *node,
     const std::vector<bool> &coverage)
 {

@@ -28,6 +28,14 @@ struct ScoredTree {
 };
 using ScoredTrees = std::vector<ScoredTree>;
 
+struct GeneCell {
+  TreePtr geneTree;
+  DistanceMatrix distanceMatrix;
+  BitVector coverage;
+  std::vector<unsigned int> gidToSpid;
+  GeneCell(TreePtr ptr = nullptr): geneTree(ptr) {}
+};
+
 
 /**
  *  Read all trees from inputGeneTreeFile
@@ -59,26 +67,6 @@ static DistanceMatrix initDistancetMatrix(unsigned int N,
   return DistanceMatrix(N, nullDistances); 
 }
  
-/**
- *  Computes the gene internode distance matrices of
- *  each gene tree
- */
-void fillDistanceMatrices(GeneTrees &geneTrees, 
-    const IDParam &params,
-    std::vector<DistanceMatrix> &distanceMatrices)
-{
-  distanceMatrices.resize(geneTrees.size());
-  for (unsigned int k = 0; k < geneTrees.size(); ++k) {
-    auto &d = distanceMatrices[k];
-    auto &geneTree = *geneTrees[k];
-    auto geneNumber = geneTree.getLeavesNumber();
-    d = initDistancetMatrix(geneNumber,
-        geneNumber,
-        std::numeric_limits<double>::infinity());
-    InternodeDistance::computeFromGeneTree(geneTree, d, params);
-  }
-}
-
 /**
  *  Initialize the program state
  */
@@ -133,7 +121,6 @@ void extractMappings(const Arguments &arg,
   std::set<std::string> sortedSpecies(mappings.getCoveredSpecies().begin(),
       mappings.getCoveredSpecies().end());
   for (const auto &species: sortedSpecies) {
-    Logger::info << species << " " << speciesToSpid.size() << std::endl;
     speciesToSpid.insert({species, speciesToSpid.size()});
   }
   Logger::timed << "Number of species: " 
@@ -149,63 +136,67 @@ void extractMappings(const Arguments &arg,
  *  and species leaves). The gid is 
  *  also stored in the data field of the gene leaves
  */
-void fillGidToSpid(GeneTrees &geneTrees,
+void fillGidToSpid(std::vector<GeneCell> &geneCells,
     GeneSpeciesMapping &mappings,
-    StringToUint &speciesToSpid,
-    UIntMatrix &gidToSpid)
+    StringToUint &speciesToSpid)
 {
-  gidToSpid.resize(geneTrees.size());
   StringToUint labelToGid;
-  for (unsigned int k = 0; k < geneTrees.size(); ++k) {
-    auto &geneTree = *geneTrees[k];
+  for (auto &geneCell: geneCells) {
+    auto &geneTree = *geneCell.geneTree;
+    // the following line 
+    // ensures that two gene trees with the same
+    // leaf set also have the same leaf node indices:
+    geneTree.sortLeaves();
     for (auto leaf: geneTree.getLeaves()) {
       intptr_t gid = leaf->node_index;
       const auto &species = mappings.getSpecies(leaf->label);
       auto spid = speciesToSpid.at(species);
       leaf->data = reinterpret_cast<void*>(gid);
-      gidToSpid[k].push_back(spid);
+      geneCell.gidToSpid.push_back(spid);
     }
   }
 }
 
 void computeGeneDistances(const Arguments &arg,
-    GeneTrees &geneTrees,
-    std::vector<DistanceMatrix> &distanceMatrices)
+    std::vector<GeneCell *> &geneCells)
 {
   Logger::timed << "Computing internode distances from the gene trees..." << std::endl;
   IDParam idParams;
   idParams.minBL = arg.minBL;
-  fillDistanceMatrices(geneTrees, 
-      idParams, 
-      distanceMatrices);
+  for (auto cell: geneCells) {
+    auto geneNumber = cell->geneTree->getLeavesNumber();
+    cell->distanceMatrix = initDistancetMatrix(geneNumber,
+        geneNumber,
+        std::numeric_limits<double>::infinity());
+    InternodeDistance::computeFromGeneTree(*cell->geneTree,
+        cell->distanceMatrix, 
+        idParams);
+  }
 }
   
 /**
  *  Compute the coverage pattern of each gene tree
  */
 void computeFamilyCoverage(
-    GeneTrees &geneTrees,
-    unsigned int speciesNumber,
-    const UIntMatrix &gidToSpid,
-    std::vector<BitVector> &perFamilyCoverage)
+    std::vector<GeneCell> &geneCells,
+    unsigned int speciesNumber)
 {
   Logger::timed << "Computing coverage..." << std::endl;
-  perFamilyCoverage = std::vector<BitVector>(geneTrees.size(),
-      BitVector(speciesNumber, false));
   size_t total = 0;
-  for (unsigned int k = 0; k < geneTrees.size(); ++k) {
-    for (auto geneLeaf: geneTrees[k]->getLeaves()) {
+  for (auto &geneCell: geneCells) {
+    geneCell.coverage = BitVector(speciesNumber, false);
+    for (auto geneLeaf: geneCell.geneTree->getLeaves()) {
       auto gid = reinterpret_cast<intptr_t>(geneLeaf->data);
-      auto spid = gidToSpid[k][gid];
-      if (!perFamilyCoverage[k][spid]) {
+      auto spid = geneCell.gidToSpid[gid];
+      if (!geneCell.coverage[spid]) {
         total++;
-        perFamilyCoverage[k].set(spid);
+        geneCell.coverage.set(spid);
       }
     }
   }
   Logger::timed << "Total number of genes: " << total << std::endl;
   Logger::timed << "Sampling proportion: " 
-    << double(total) / double(geneTrees.size() * speciesNumber)
+    << double(total) / double(geneCells.size() * speciesNumber)
     << std::endl;
 } 
 
@@ -213,41 +204,38 @@ void computeFamilyCoverage(
  *  Assign to each MPI rank a subset of the gene 
  *  trees in order to parallelize computations
  */
-void getPerCoreGeneTrees(GeneTrees &geneTrees,
-    GeneTrees &perCoreGeneTrees)
+void getPerCoreGeneCells(std::vector<GeneCell *> &geneCells,
+    std::vector<GeneCell *> &perCoreGeneCells)
 {
-  auto K = geneTrees.size();
+  auto K = geneCells.size();
   auto begin = ParallelContext::getBegin(K);
   auto end = ParallelContext::getEnd(K);
-  perCoreGeneTrees.clear();
+  perCoreGeneCells.clear();
   for (unsigned int k = begin; k < end; ++k) {
-    perCoreGeneTrees.push_back(geneTrees[k]);
+    perCoreGeneCells.push_back(geneCells[k]);
   }
 }
     
-void getDataNoCorrection(
-        const std::vector<DistanceMatrix> &distanceMatrices,
-        std::vector<DistanceMatrix> &astridDistanceMatrices,
-        std::vector<BitVector> & astridPerFamilyCoverage,
-        const UIntMatrix &asteroidGidToSpid,
-        UIntMatrix &astridGidToSpid,
+void getDataNoCorrection(const std::vector<GeneCell *> &geneCells,
+        std::vector<DistanceMatrix> &distanceMatrices,
+        std::vector<BitVector> &coverages,
+        UIntMatrix &gidToSpid,
         unsigned int speciesNumber)
 {
-  unsigned int K = distanceMatrices.size(); 
   DistanceMatrix astridDistanceMatrix = initDistancetMatrix(speciesNumber,
       speciesNumber,
       0.0);
   DistanceMatrix denominator = initDistancetMatrix(speciesNumber,
       speciesNumber,
       0.0);
-  for (unsigned int k = 0; k < K; ++k) {
-    auto geneNumber = asteroidGidToSpid[k].size();
+  for (auto cell: geneCells) {
+    auto geneNumber = cell->gidToSpid.size();
     for (unsigned int igid = 0; igid < geneNumber; ++igid) {
-      auto ispid = asteroidGidToSpid[k][igid];
+      auto ispid = cell->gidToSpid[igid];
       for (unsigned int jgid = 0; jgid < geneNumber; ++jgid) {
-        auto jspid = asteroidGidToSpid[k][jgid];
+        auto jspid = cell->gidToSpid[jgid];
         astridDistanceMatrix[ispid][jspid] += 
-          distanceMatrices[k][igid][jgid];
+          cell->distanceMatrix[igid][jgid];
         denominator[ispid][jspid] += 1.0; 
       }
     }
@@ -261,55 +249,75 @@ void getDataNoCorrection(
       }
     }
   }
-  astridDistanceMatrices.push_back(astridDistanceMatrix);
-  BitVector astridCoverage(speciesNumber, true);
-  astridPerFamilyCoverage.push_back(astridCoverage);
-  astridGidToSpid.resize(1);
+  distanceMatrices.push_back(astridDistanceMatrix);
+  coverages.push_back(BitVector (speciesNumber, true));
+  gidToSpid.push_back(std::vector<unsigned int>());
   for (unsigned int i = 0;  i < speciesNumber; ++i) {
-    astridGidToSpid[0].push_back(i);
+    gidToSpid.back().push_back(i);
+  }
+}
+
+void getDataWithCorrection(const std::vector<GeneCell *> &geneCells,
+        std::vector<DistanceMatrix> &distanceMatrices,
+        std::vector<BitVector> &coverages,
+        UIntMatrix &gidToSpid,
+        unsigned int speciesNumber)
+{
+  DistanceMatrix astridDistanceMatrix = initDistancetMatrix(speciesNumber,
+      speciesNumber,
+      0.0);
+  BitVector lastCoverage;
+  for (auto cell: geneCells) {
+    auto geneNumber = cell->gidToSpid.size();
+    if (cell->coverage != lastCoverage) {
+      distanceMatrices.push_back(cell->distanceMatrix);
+      coverages.push_back(cell->coverage);
+      gidToSpid.push_back(cell->gidToSpid);
+    } else {
+      auto &d = distanceMatrices.back();
+      for (unsigned int igid = 0; igid < geneNumber; ++igid) {
+        for (unsigned int jgid = 0; jgid < geneNumber; ++jgid) {
+          d[igid][jgid] += cell->distanceMatrix[igid][jgid];
+        }
+      }
+    }
+    lastCoverage = cell->coverage;
   }
 }
 
 double optimize(PLLUnrootedTree &speciesTree,
-    const std::vector<DistanceMatrix>  &asteroidDistanceMatrices,
-    const std::vector<BitVector> &asteroidPerFamilyCoverage,
-    const UIntMatrix &asteroidGidToSpid,
+    const std::vector<GeneCell *>  &geneCells,
     bool noCorrection)
 {
-  const std::vector<DistanceMatrix> *distanceMatrices = nullptr;
-  const std::vector<BitVector> *perFamilyCoverage = nullptr;
-  const UIntMatrix *gidToSpid = nullptr; 
-  std::vector<DistanceMatrix> astridDistanceMatrices;
-  std::vector<BitVector> astridPerFamilyCoverage;
-  UIntMatrix astridGidToSpid;
+  std::vector<GeneCell *> compressedCells;
+  std::vector<DistanceMatrix> distanceMatrices;
+  std::vector<BitVector> coverages;
+  UIntMatrix gidToSpid;
   if (noCorrection) {
-    getDataNoCorrection(asteroidDistanceMatrices,
-        astridDistanceMatrices,
-        astridPerFamilyCoverage,
-        asteroidGidToSpid,
-        astridGidToSpid,
+    getDataNoCorrection(geneCells,
+        distanceMatrices,
+        coverages,
+        gidToSpid,
         speciesTree.getLeavesNumber());
-    perFamilyCoverage = &astridPerFamilyCoverage;
-    distanceMatrices = &astridDistanceMatrices;
-    gidToSpid = &astridGidToSpid;
   } else {
-    perFamilyCoverage = &asteroidPerFamilyCoverage;
-    distanceMatrices = &asteroidDistanceMatrices;
-    gidToSpid = &asteroidGidToSpid;
+    getDataWithCorrection(geneCells,
+        distanceMatrices,
+        coverages,
+        gidToSpid,
+        speciesTree.getLeavesNumber());
   }
-  Logger::timed << "Initializing optimizer... " << std::endl;
+  Logger::timed << "Initializing optimizer with " << distanceMatrices.size() << " coverage patterns from " << geneCells.size() << " gene trees... " << std::endl;
   AsteroidOptimizer optimizer(speciesTree,
-      *perFamilyCoverage,
-      *gidToSpid,
-      *distanceMatrices);
+      coverages,
+      gidToSpid,
+      distanceMatrices);
   Logger::timed << "Starting tree search... " << std::endl;
   return optimizer.optimize();
 }
 
+
 ScoredTrees search(SpeciesTrees &startingSpeciesTrees,
-  const std::vector<DistanceMatrix> &asteroidDistanceMatrices,
-  const std::vector<BitVector> &asteroidPerFamilyCoverage,
-  const UIntMatrix &gidToSpid,
+  const std::vector<GeneCell *> &geneCells,
   bool noCorrection,
   int samples = -1)
 {
@@ -320,9 +328,7 @@ ScoredTrees search(SpeciesTrees &startingSpeciesTrees,
     st.tree = speciesTree;
     if (samples == -1) {
       st.score = optimize(*speciesTree, 
-          asteroidDistanceMatrices, 
-          asteroidPerFamilyCoverage,
-          gidToSpid,
+          geneCells, 
           noCorrection);
     } else {
       //assert(false); // todo re-enable!
@@ -373,6 +379,7 @@ Trees generateRandomSpeciesTrees(std::unordered_set<std::string> &labels,
 }
 
 
+
 int main(int argc, char * argv[])
 {
   // user-specified arguments
@@ -381,6 +388,8 @@ int main(int argc, char * argv[])
   GeneTrees geneTrees;
   // trees assigned to the local parallel core/rank
   GeneTrees perCoreGeneTrees;
+  // map gene label to species label
+  GeneSpeciesMapping mappings;
   // map species labels to species spid
   StringToUint speciesToSpid;
   // per-family distance matrices
@@ -392,39 +401,46 @@ int main(int argc, char * argv[])
 
   init(arg);
   readGeneTrees(arg.inputGeneTreeFile, geneTrees);
-  GeneSpeciesMapping mappings;
   extractMappings(arg, geneTrees, mappings, speciesToSpid); 
   unsigned int speciesNumber = mappings.getCoveredSpecies().size();
   auto speciesLabels = mappings.getCoveredSpecies();
  
 
-  
+  std::vector<GeneCell> allGeneCells;
+  for (auto geneTree: geneTrees) {
+    allGeneCells.push_back(GeneCell(geneTree));
+  }
+  fillGidToSpid(allGeneCells, mappings, speciesToSpid);
+  computeFamilyCoverage(allGeneCells, speciesNumber);
+  std::unordered_map<BitVector, std::vector<GeneCell *> > cellMap;
+  for (auto &cell: allGeneCells) {
+    if (cellMap.end() == cellMap.find(cell.coverage)) {
+      cellMap.insert({cell.coverage, std::vector<GeneCell *>()});
+    }
+    cellMap[cell.coverage].push_back(&cell);
+  }
+  std::vector<GeneCell *> geneCells;
+  std::vector<GeneCell *> perCoreGeneCells;
+  for (auto it: cellMap) {
+    for (auto cell: it.second) {
+      geneCells.push_back(cell);
+    }
+  }
+  getPerCoreGeneCells(geneCells, perCoreGeneCells);
+  computeGeneDistances(arg, perCoreGeneCells);
 
-
-  getPerCoreGeneTrees(geneTrees, perCoreGeneTrees);
-  fillGidToSpid(perCoreGeneTrees, mappings, speciesToSpid, gidToSpid);
-  computeFamilyCoverage(perCoreGeneTrees, speciesNumber, gidToSpid, perFamilyCoverage);
-  
-  computeGeneDistances(arg, perCoreGeneTrees, distanceMatrices); 
-  
   SpeciesTrees startingSpeciesTrees =
     generateRandomSpeciesTrees(speciesLabels, 
         speciesToSpid,
         std::max(arg.randomStartingTrees, 1u));
   if (arg.randomStartingTrees < 1) {
     optimize(*startingSpeciesTrees[0], 
-          distanceMatrices, 
-          perFamilyCoverage,
-          gidToSpid,
+          perCoreGeneCells,
           true);
-    
   }
   ScoredTrees scoredTrees = search(startingSpeciesTrees,
-      distanceMatrices,
-      perFamilyCoverage,
-      gidToSpid,
+      perCoreGeneCells,
       arg.noCorrection);
-
   std::string outputSpeciesTreeFile = arg.prefix + ".bestTree.newick";
   std::string outputSpeciesTreesFile = arg.prefix + ".allTrees.newick";
   std::string outputScoresFile = arg.prefix + ".scores.txt"; 
@@ -439,7 +455,6 @@ int main(int argc, char * argv[])
     scoresOs << st.score << std::endl;
     Logger::info << st.score << std::endl;
   }
-
 
 
   if (arg.bootstrapTrees > 0) {

@@ -70,11 +70,10 @@ private:
   };
   // Index convention:
   // - k -> gene tree index
-  // - gid: node_index in the induced species tree
+  // - gid: node_index in the induced species tree and 
+  // in the gene distance matrix
   // - spid: node_index in the species tree
 
-  // _gidToSpid[k][gid] == spid
-  const UIntMatrix &_gidToSpid;
   // _spidToGid[k][spid] == gid
   UIntMatrix _spidToGid;
   // internode gene distance matrices

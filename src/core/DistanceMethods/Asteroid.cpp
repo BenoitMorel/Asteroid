@@ -27,7 +27,6 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
       const std::vector<BitVector> &perFamilyCoverage,
       const UIntMatrix &gidToSpid,
       const std::vector<DistanceMatrix> &geneDistanceMatrices):
-  _gidToSpid(gidToSpid),
   _geneDistanceMatrices(geneDistanceMatrices),
   _perFamilyCoverage(perFamilyCoverage)
 {
@@ -39,10 +38,10 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
   _pruneRegraftDiff.resize(_K);
   for (unsigned int k = 0; k < _K; ++k) {
     _spidToGid[k].resize(speciesTree.getLeavesNumber());
-    for (unsigned int gid = 0; gid < _gidToSpid[k].size(); ++gid) {
-      _spidToGid[k][_gidToSpid[k][gid]] = gid;
+    for (unsigned int gid = 0; gid < gidToSpid[k].size(); ++gid) {
+      _spidToGid[k][gidToSpid[k][gid]] = gid;
     }
-    _inducedNodeNumber.push_back(_gidToSpid[k].size() * 4 - 6);
+    _inducedNodeNumber.push_back(gidToSpid[k].size() * 4 - 6);
   }
   for (unsigned int i = 0; i < speciesTree.getLeavesNumber() + 3; ++i) {
     _pows.push_back(std::pow(0.5, i));
@@ -50,7 +49,7 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
   _prunedSpeciesMatrices = std::vector<DistanceMatrix>(_K);
   _avDistances.resize(_K);
   for (unsigned int k = 0; k < _K; ++k) {
-    auto geneLeafNumber = _gidToSpid[k].size();
+    auto geneLeafNumber = gidToSpid[k].size();
     auto geneNodeNumber = _inducedNodeNumber[k];
     _prunedSpeciesMatrices[k] = getNullMatrix(geneLeafNumber);
     _avDistances[k] = MatrixDouble(geneNodeNumber, 
