@@ -198,7 +198,30 @@ void computeFamilyCoverage(
   Logger::timed << "Sampling proportion: " 
     << double(total) / double(geneCells.size() * speciesNumber)
     << std::endl;
-} 
+}
+
+std::vector<unsigned int> getPerCoreUniformSampling(unsigned int K)
+{
+  auto begin = ParallelContext::getBegin(K);
+  auto end = ParallelContext::getEnd(K);
+  return std::vector<unsigned int>(end - begin, 1);
+}
+
+std::vector<unsigned int> getPerCoreBSSampling(unsigned int K) 
+{
+  std::vector<unsigned int> sampling(K, 0);
+  for (unsigned int i = 0; i < K; ++i) {
+    sampling[Random::getInt(K)]++;
+  }
+  std::vector<unsigned int> perCoreSampling;
+  auto begin = ParallelContext::getBegin(K);
+  auto end = ParallelContext::getEnd(K);
+  for (unsigned int i = begin; i < end; ++i) {
+    perCoreSampling.push_back(sampling[i]);
+  }
+  return perCoreSampling;
+}
+
 
 /**
  *  Assign to each MPI rank a subset of the gene 
@@ -217,6 +240,7 @@ void getPerCoreGeneCells(std::vector<GeneCell *> &geneCells,
 }
     
 void getDataNoCorrection(const std::vector<GeneCell *> &geneCells,
+        const std::vector<unsigned int> &weights,
         std::vector<DistanceMatrix> &distanceMatrices,
         std::vector<BitVector> &coverages,
         UIntMatrix &gidToSpid,
@@ -228,15 +252,20 @@ void getDataNoCorrection(const std::vector<GeneCell *> &geneCells,
   DistanceMatrix denominator = initDistancetMatrix(speciesNumber,
       speciesNumber,
       0.0);
-  for (auto cell: geneCells) {
+  for (unsigned int k = 0; k < geneCells.size(); ++k ) {
+    if (!weights[k]) {
+      continue;
+    } 
+    auto cell = geneCells[k];
+    double weight = static_cast<double>(weights[k]);
     auto geneNumber = cell->gidToSpid.size();
     for (unsigned int igid = 0; igid < geneNumber; ++igid) {
       auto ispid = cell->gidToSpid[igid];
       for (unsigned int jgid = 0; jgid < geneNumber; ++jgid) {
         auto jspid = cell->gidToSpid[jgid];
         astridDistanceMatrix[ispid][jspid] += 
-          cell->distanceMatrix[igid][jgid];
-        denominator[ispid][jspid] += 1.0; 
+          cell->distanceMatrix[igid][jgid] * weight;
+        denominator[ispid][jspid] += weight; 
       }
     }
   }
@@ -258,6 +287,7 @@ void getDataNoCorrection(const std::vector<GeneCell *> &geneCells,
 }
 
 void getDataWithCorrection(const std::vector<GeneCell *> &geneCells,
+        const std::vector<unsigned int> &weights,
         std::vector<DistanceMatrix> &distanceMatrices,
         std::vector<BitVector> &coverages,
         UIntMatrix &gidToSpid,
@@ -267,7 +297,12 @@ void getDataWithCorrection(const std::vector<GeneCell *> &geneCells,
       speciesNumber,
       0.0);
   BitVector lastCoverage;
-  for (auto cell: geneCells) {
+  for (unsigned int k = 0; k < geneCells.size(); ++k) {
+    if (!weights[k]) {
+      continue;
+    } 
+    auto cell = geneCells[k];
+    double weight = static_cast<double>(weights[k]);
     auto geneNumber = cell->gidToSpid.size();
     if (cell->coverage != lastCoverage) {
       distanceMatrices.push_back(cell->distanceMatrix);
@@ -277,7 +312,7 @@ void getDataWithCorrection(const std::vector<GeneCell *> &geneCells,
       auto &d = distanceMatrices.back();
       for (unsigned int igid = 0; igid < geneNumber; ++igid) {
         for (unsigned int jgid = 0; jgid < geneNumber; ++jgid) {
-          d[igid][jgid] += cell->distanceMatrix[igid][jgid];
+          d[igid][jgid] += cell->distanceMatrix[igid][jgid] * weight;
         }
       }
     }
@@ -287,6 +322,7 @@ void getDataWithCorrection(const std::vector<GeneCell *> &geneCells,
 
 double optimize(PLLUnrootedTree &speciesTree,
     const std::vector<GeneCell *>  &geneCells,
+    const std::vector<unsigned int> &weights,
     bool noCorrection)
 {
   std::vector<GeneCell *> compressedCells;
@@ -295,12 +331,14 @@ double optimize(PLLUnrootedTree &speciesTree,
   UIntMatrix gidToSpid;
   if (noCorrection) {
     getDataNoCorrection(geneCells,
+        weights,
         distanceMatrices,
         coverages,
         gidToSpid,
         speciesTree.getLeavesNumber());
   } else {
     getDataWithCorrection(geneCells,
+        weights,
         distanceMatrices,
         coverages,
         gidToSpid,
@@ -318,34 +356,18 @@ double optimize(PLLUnrootedTree &speciesTree,
 
 ScoredTrees search(SpeciesTrees &startingSpeciesTrees,
   const std::vector<GeneCell *> &geneCells,
-  bool noCorrection,
-  int samples = -1)
+  const std::vector<unsigned int> &weights,
+  bool noCorrection)
 {
   ScoredTrees scoredTrees;
   // Perform search
   for (auto speciesTree: startingSpeciesTrees) {
     ScoredTree st;
     st.tree = speciesTree;
-    if (samples == -1) {
-      st.score = optimize(*speciesTree, 
+    st.score = optimize(*speciesTree, 
           geneCells, 
+          weights,
           noCorrection);
-    } else {
-      //assert(false); // todo re-enable!
-      /*
-      std::vector<DistanceMatrix> sampledDistanceMatrices;
-      std::vector<BitVector> sampledPerFamilyCoverage;
-      for (int i = 0; i < samples; ++i) {
-        unsigned int s = Random::getInt(samples);
-        sampledDistanceMatrices.push_back(asteroidDistanceMatrices[s]);
-        sampledPerFamilyCoverage.push_back(asteroidPerFamilyCoverage[s]);
-      }
-      st.score = optimize(*speciesTree,
-          sampledDistanceMatrices,
-          sampledPerFamilyCoverage,
-          noCorrection);
-      */
-    }
     scoredTrees.push_back(st);
   }
   std::sort(scoredTrees.begin(), scoredTrees.end());
@@ -410,6 +432,7 @@ int main(int argc, char * argv[])
   for (auto geneTree: geneTrees) {
     allGeneCells.push_back(GeneCell(geneTree));
   }
+  unsigned int K = allGeneCells.size();
   fillGidToSpid(allGeneCells, mappings, speciesToSpid);
   computeFamilyCoverage(allGeneCells, speciesNumber);
   std::unordered_map<BitVector, std::vector<GeneCell *> > cellMap;
@@ -436,10 +459,12 @@ int main(int argc, char * argv[])
   if (arg.randomStartingTrees < 1) {
     optimize(*startingSpeciesTrees[0], 
           perCoreGeneCells,
+          getPerCoreUniformSampling(K),
           true);
   }
   ScoredTrees scoredTrees = search(startingSpeciesTrees,
       perCoreGeneCells,
+      getPerCoreUniformSampling(K),
       arg.noCorrection);
   std::string outputSpeciesTreeFile = arg.prefix + ".bestTree.newick";
   std::string outputSpeciesTreesFile = arg.prefix + ".allTrees.newick";
