@@ -481,32 +481,26 @@ int main(int argc, char * argv[])
     Logger::info << st.score << std::endl;
   }
 
-
   if (arg.bootstrapTrees > 0) {
-    assert(false);
-    /*
-    SpeciesTrees startingBSTrees =
-      generateRandomSpeciesTrees(speciesLabels, 
-          speciesToSpid,
-          arg.bootstrapTrees);
-    ScoredTrees finalBSTrees = search(startingBSTrees,
-        distanceMatrices,
-        perFamilyCoverage,
-        arg.noCorrection,
-        perCoreGeneTrees.size());
     std::string bsTreesFile = arg.prefix + ".bsTrees.newick";
     ParallelOfstream bsOs(bsTreesFile);
     SplitHashtable splits;
-    for (const auto &st: finalBSTrees) {
-      bsOs << st.tree->getNewickString() << std::endl;
-      splits.addTree(*st.tree);
+    for (unsigned int i = 0; i < arg.bootstrapTrees; ++i) {
+      SpeciesTrees startingBSTrees =
+        generateRandomSpeciesTrees(speciesLabels, 
+            speciesToSpid,
+            1);
+      ScoredTrees scoredBSTree = search(startingBSTrees,
+        perCoreGeneCells,
+        getPerCoreBSSampling(K),
+        arg.noCorrection);
+      bsOs << scoredBSTree[0].tree->getNewickString() << std::endl;
+      splits.addTree(*scoredBSTree[0].tree);
     }
     splits.computeSupportValues(bestTree);
     bestTree.save(outputSpeciesTreeFile);
-    */
   } 
   
-
   close();
   return 0;
 
