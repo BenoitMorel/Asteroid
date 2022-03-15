@@ -1,7 +1,6 @@
 #include <iostream>
 #include <corax/corax.h>
 
-#include "AsteroidOptimizer.hpp"
 #include <IO/Logger.hpp>
 #include <IO/GeneSpeciesMapping.hpp>
 #include <maths/Random.hpp>
@@ -9,6 +8,7 @@
 #include <trees/PLLUnrootedTree.hpp>
 #include <trees/SplitHashtable.hpp>
 #include <DistanceMethods/InternodeDistance.hpp>
+#include <DistanceMethods/AsteroidOptimizer.hpp>
 #include <memory>
 #include <set>
 #include <algorithm>

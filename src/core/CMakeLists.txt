@@ -2,6 +2,7 @@
 set(asteroid-core_SOURCES 
   DistanceMethods/InternodeDistance.cpp
   DistanceMethods/Asteroid.cpp
+  DistanceMethods/AsteroidOptimizer.cpp
   IO/Logger.cpp
   IO/GeneSpeciesMapping.cpp
   IO/ParallelOfstream.cpp
