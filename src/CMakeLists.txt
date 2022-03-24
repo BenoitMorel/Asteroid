@@ -29,4 +29,5 @@ macro(add_program program_name program_sources)
 endmacro()
 
 add_subdirectory(asteroid)
+add_subdirectory(concasteroid)
 
