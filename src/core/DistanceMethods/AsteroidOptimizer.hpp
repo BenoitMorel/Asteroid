@@ -17,7 +17,8 @@ public:
   AsteroidOptimizer(PLLUnrootedTree &speciesTree,
       const std::vector<BitVector> &perFamilyCoverage,
       const UIntMatrix &gidToSpid,
-      const std::vector<DistanceMatrix> &distanceMatrices);
+      const std::vector<DistanceMatrix> &distanceMatrices,
+      bool verbose);
   virtual ~AsteroidOptimizer() {}
   /**
    *  Runs the optimization
@@ -39,6 +40,7 @@ private:
   PLLUnrootedTree &_speciesTree;
   Asteroid _asteroid;
   double _lastScore;
+  bool _verbose;
 };
 
 

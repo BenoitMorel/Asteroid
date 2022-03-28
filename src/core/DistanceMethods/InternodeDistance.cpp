@@ -8,7 +8,7 @@ void computeFromGeneTreeAux(corax_unode_t *node,
     std::vector<double> &distances)
 {
   if (!node->next) {
-    d += 1.0;
+    d += params.useBL ? node->length : 1.0;
     auto spid = static_cast<size_t>(
         reinterpret_cast<intptr_t>(node->data));
     distances[spid] = std::min(d, distances[spid]); 
@@ -18,7 +18,7 @@ void computeFromGeneTreeAux(corax_unode_t *node,
   isPolytomy |= node->length  <= params.minBL;
   isPolytomy &= (nullptr != node->back->next);
   if (!isPolytomy) {
-    d += 1.0;
+    d += params.useBL ? node->length : 1.0;
   }
   for (auto n = node->next; n != node; n = n->next) {
     computeFromGeneTreeAux(n->back, params, d, distances);

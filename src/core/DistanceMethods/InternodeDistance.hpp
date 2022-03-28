@@ -5,9 +5,11 @@
 class PLLUnrootedTree;
 
 struct IDParam {
-  IDParam():minBL(-1.0) {}
+  IDParam():minBL(-1.0),
+  useBL(false){}
 
   double minBL; // contract internal branches shorter than minBL
+  bool useBL;
 };
 
 class InternodeDistance {

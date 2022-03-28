@@ -81,7 +81,6 @@ double Asteroid::computeLength(const PLLUnrootedTree &speciesTree)
     }
   }
   ParallelContext::sumDouble(res);
-  Logger::timed << "after compute pruned " << std::endl;
   return res;
 }
   

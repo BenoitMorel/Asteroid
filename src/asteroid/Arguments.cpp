@@ -10,7 +10,8 @@ Arguments::Arguments(int argc, char * argv[]):
   bootstrapTrees(0),
   seed(1),
   noCorrection(false),
-  minBL(-1.0)
+  minBL(-1.0),
+  useGeneBL(false)
 {
   if (argc == 1) {
     printHelp();
@@ -37,6 +38,8 @@ Arguments::Arguments(int argc, char * argv[]):
       noCorrection = true;
     } else if (arg == "--min-bl") {
       minBL = atof(argv[++i]);
+    } else if (arg == "--use-gene-bl") {
+      useGeneBL = true;
     } else {
       Logger::info << "Unrecognized argument " << arg << std::endl;
       Logger::info << "Aborting" << std::endl;
@@ -56,6 +59,7 @@ void Arguments::printHelp()
   Logger::info << "--seed <INTEGER>                      \t Random seed. Default is 1." << std::endl;
   Logger::info << "-n | --no-correction                  \t When set, Asteroid disables its missing data correction, and the algorithm is then equivalent to ASTRID." << std::endl;
   Logger::info << "--min-bl <REAL>                       \t Branches with a length under this value will be contracted into polotomies before computing the distance matrices. DEfault value is -1.0 (no contraction)" << std::endl;
+  Logger::info << "--use-gene-bl                         \t Use the gene tree branch lengths instead of their internode distance to build the distance matrices" << std::endl;
 }
 
 void Arguments::printCommand() {

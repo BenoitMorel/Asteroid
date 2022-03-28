@@ -22,4 +22,5 @@ struct Arguments {
 
   bool noCorrection;
   double minBL;
+  bool useGeneBL;
 };

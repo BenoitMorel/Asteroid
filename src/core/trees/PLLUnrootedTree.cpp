@@ -132,6 +132,19 @@ void PLLUnrootedTree::setMissingBranchLengths(double minBL)
   }  
 }
   
+void PLLUnrootedTree::setAllBranchLengths(double val)
+{
+  for (auto node: getLeaves()) {
+    node->length = val;
+  }
+  for (unsigned int i = _tree->tip_count; i < _tree->tip_count + _tree->inner_count; ++i) {
+    _tree->nodes[i]->length = val;
+    _tree->nodes[i]->next->length = val;
+    _tree->nodes[i]->next->next->length = val;
+  }  
+}
+
+  
 CArrayRange<corax_unode_t*> PLLUnrootedTree::getLeaves() const
 {
   return CArrayRange<corax_unode_t*>(_tree->nodes, getLeavesNumber());

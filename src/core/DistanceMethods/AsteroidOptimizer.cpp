@@ -5,7 +5,9 @@
 double AsteroidOptimizer::eval(PLLUnrootedTree &tree)
 {
   _lastScore = -_asteroid.computeLength(tree);
-  Logger::timed << "score=" << _lastScore << std::endl;
+  if (_verbose) {
+    Logger::timed << "score=" << _lastScore << std::endl;
+  }
   return _lastScore;
 }
 
@@ -65,19 +67,25 @@ bool AsteroidOptimizer::computeAndApplyBestSPR()
 {
   unsigned int maxRadiusWithoutImprovement = 3;
   unsigned int maxRadiusWithoutImprovementThorough = 10000;
-  Logger::timed << "last score " << _lastScore << std::endl;
+  if (_verbose) {
+    Logger::timed << "last score " << _lastScore << std::endl;
+  }
   std::vector<SPRMove> bestMoves;
   double epsilon = 0.00000001;
   _asteroid.getBestSPR(_speciesTree, 
       maxRadiusWithoutImprovement,
       bestMoves);
   if (bestMoves.size() == 0 || bestMoves[0].score < epsilon) {
-    Logger::info << "Local search failed, trying with max radius..." << std::endl;
+    if (_verbose) {
+      Logger::info << "Local search failed, trying with max radius..." << std::endl;
+    }
     _asteroid.getBestSPR(_speciesTree, 
         maxRadiusWithoutImprovementThorough,
         bestMoves);
     if (bestMoves.size() == 0 || bestMoves[0].score < epsilon) {
-      Logger::info << "Global search failed, stopping" << std::endl;
+      if (_verbose) {
+        Logger::info << "Global search failed, stopping" << std::endl;
+      }
       return false;
     }
   }
@@ -112,14 +120,18 @@ bool AsteroidOptimizer::computeAndApplyBestSPR()
       break;
     }
   }
-  Logger::info << "Moves: " << appliedMoves << std::endl;
+  if (_verbose) {
+    Logger::info << "Applied moves: " << appliedMoves << std::endl;
+  }
   double newScore = -_asteroid.computeLength(_speciesTree);
   double diff = newScore - _lastScore;
-  if (appliedMoves) {
+  if (appliedMoves && _verbose) {
     Logger::info << "Expected: " << expectedDiff << " real:" << diff << " highest: " << bestMoves[0].score << std::endl;
   }
   if (newScore < _lastScore + epsilon) {
-    Logger::info << "New score " << newScore << " worse than last score " << _lastScore << std::endl;
+    if (_verbose) {
+      Logger::info << "New score " << newScore << " worse than last score " << _lastScore << std::endl;
+    }
     for (int i = rollbacks.size() - 1; i >= 1; --i) {
       corax_tree_rollback(&rollbacks[i]);
     }
@@ -134,10 +146,12 @@ bool AsteroidOptimizer::computeAndApplyBestSPR()
 AsteroidOptimizer::AsteroidOptimizer(PLLUnrootedTree &speciesTree,
     const std::vector<BitVector> &perFamilyCoverage,
     const UIntMatrix &gidToSpid,
-    const std::vector<DistanceMatrix> &distanceMatrices):
+    const std::vector<DistanceMatrix> &distanceMatrices,
+    bool verbose):
   _speciesTree(speciesTree),
   _asteroid(speciesTree, perFamilyCoverage, gidToSpid, distanceMatrices),
-  _lastScore(0.0)
+  _lastScore(0.0),
+  _verbose(verbose)
 {
   ParallelContext::barrier();
 }
@@ -145,14 +159,18 @@ AsteroidOptimizer::AsteroidOptimizer(PLLUnrootedTree &speciesTree,
 double AsteroidOptimizer::optimize()
 {
   double startingScore = eval(_speciesTree); 
-  Logger::info << "Starting score: " << startingScore << std::endl;
+  if (_verbose) {
+    Logger::info << "Starting score: " << startingScore << std::endl;
+  }
   bool ok = true;
   unsigned int it = 0;
   while (ok) {
     ok = computeAndApplyBestSPR();
     ++it;
   }
-  Logger::info << "SPR search stopped after " << it << " iterations" << std::endl;
+  if (_verbose) {
+    Logger::info << "SPR search stopped after " << it << " iterations" << std::endl;
+  }
   return _lastScore;
 }
 

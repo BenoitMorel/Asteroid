@@ -94,7 +94,6 @@ void readGeneTrees(const std::string &inputGeneTreeFile,
   Logger::timed << "Parsing gene trees..." << std::endl;
   parseTrees(inputGeneTreeFile,
       geneTrees);
-  Logger::timed << "Number of gene trees:" << geneTrees.size() << std::endl;
 }
 
 /**
@@ -123,9 +122,6 @@ void extractMappings(const Arguments &arg,
   for (const auto &species: sortedSpecies) {
     speciesToSpid.insert({species, speciesToSpid.size()});
   }
-  Logger::timed << "Number of species: " 
-    << speciesToSpid.size() 
-    << std::endl;
 }
 
 
@@ -163,6 +159,7 @@ void computeGeneDistances(const Arguments &arg,
   Logger::timed << "Computing internode distances from the gene trees..." << std::endl;
   IDParam idParams;
   idParams.minBL = arg.minBL;
+  idParams.useBL = arg.useGeneBL;
   for (auto cell: geneCells) {
     auto geneNumber = cell->geneTree->getLeavesNumber();
     cell->distanceMatrix = initDistancetMatrix(geneNumber,
@@ -183,6 +180,7 @@ void computeFamilyCoverage(
 {
   Logger::timed << "Computing coverage..." << std::endl;
   size_t total = 0;
+  std::unordered_set<BitVector> coverages;
   for (auto &geneCell: geneCells) {
     geneCell.coverage = BitVector(speciesNumber, false);
     for (auto geneLeaf: geneCell.geneTree->getLeaves()) {
@@ -193,9 +191,13 @@ void computeFamilyCoverage(
         geneCell.coverage.set(spid);
       }
     }
+    coverages.insert(geneCell.coverage);
   }
-  Logger::timed << "Total number of genes: " << total << std::endl;
-  Logger::timed << "Sampling proportion: " 
+  Logger::info << "\tNumber of species: " << speciesNumber << std::endl;
+  Logger::info << "\tTotal number of gene trees: " << geneCells.size() << std::endl;
+  Logger::info << "\tNumber of distinct coverage patterns:" << coverages.size() << std::endl;
+  Logger::info << "\tTotal number of gene leaves: " << total << std::endl;
+  Logger::info << "\tSampling proportion: " 
     << double(total) / double(geneCells.size() * speciesNumber)
     << std::endl;
 }
@@ -323,7 +325,8 @@ void getDataWithCorrection(const std::vector<GeneCell *> &geneCells,
 double optimize(PLLUnrootedTree &speciesTree,
     const std::vector<GeneCell *>  &geneCells,
     const std::vector<unsigned int> &weights,
-    bool noCorrection)
+    bool noCorrection,
+    bool verbose)
 {
   std::vector<GeneCell *> compressedCells;
   std::vector<DistanceMatrix> distanceMatrices;
@@ -344,12 +347,11 @@ double optimize(PLLUnrootedTree &speciesTree,
         gidToSpid,
         speciesTree.getLeavesNumber());
   }
-  Logger::timed << "Initializing optimizer with " << distanceMatrices.size() << " coverage patterns from " << geneCells.size() << " gene trees... " << std::endl;
   AsteroidOptimizer optimizer(speciesTree,
       coverages,
       gidToSpid,
-      distanceMatrices);
-  Logger::timed << "Starting tree search... " << std::endl;
+      distanceMatrices,
+      verbose);
   return optimizer.optimize();
 }
 
@@ -357,17 +359,22 @@ double optimize(PLLUnrootedTree &speciesTree,
 ScoredTrees search(SpeciesTrees &startingSpeciesTrees,
   const std::vector<GeneCell *> &geneCells,
   const std::vector<unsigned int> &weights,
-  bool noCorrection)
+  bool noCorrection,
+  bool verbose,
+  unsigned int &index) 
 {
   ScoredTrees scoredTrees;
   // Perform search
   for (auto speciesTree: startingSpeciesTrees) {
+    Logger::timed << "Starting tree search " << index++ << std::endl;
     ScoredTree st;
     st.tree = speciesTree;
     st.score = optimize(*speciesTree, 
           geneCells, 
           weights,
-          noCorrection);
+          noCorrection,
+          verbose);
+    Logger::info << "  score: " << st.score << std::endl;
     scoredTrees.push_back(st);
   }
   std::sort(scoredTrees.begin(), scoredTrees.end());
@@ -460,31 +467,40 @@ int main(int argc, char * argv[])
     optimize(*startingSpeciesTrees[0], 
           perCoreGeneCells,
           getPerCoreUniformSampling(K),
-          true);
+          true,
+          false);
   }
+  Logger::info << std::endl;
+  unsigned int index = 0;
+  Logger::timed << "Asteroid will now search for the best scoring tree from " << startingSpeciesTrees.size() << " starting trees" << std::endl;
   ScoredTrees scoredTrees = search(startingSpeciesTrees,
       perCoreGeneCells,
       getPerCoreUniformSampling(K),
-      arg.noCorrection);
+      arg.noCorrection,
+      startingSpeciesTrees.size() == 1,
+      index);
   std::string outputSpeciesTreeFile = arg.prefix + ".bestTree.newick";
   std::string outputSpeciesTreesFile = arg.prefix + ".allTrees.newick";
   std::string outputScoresFile = arg.prefix + ".scores.txt"; 
   Logger::timed << "Final tree scores: " << std::endl;
   Logger::timed << "Printing the best tree into " << outputSpeciesTreeFile << std::endl;
   auto & bestTree = *scoredTrees[0].tree;
+  bestTree.setAllBranchLengths(1.0);
   bestTree.save(outputSpeciesTreeFile);
   ParallelOfstream treesOs(outputSpeciesTreesFile);
   ParallelOfstream scoresOs(outputScoresFile);
   for (const auto &st: scoredTrees) {
     treesOs << st.tree->getNewickString() << std::endl;
     scoresOs << st.score << std::endl;
-    Logger::info << st.score << std::endl;
   }
 
   if (arg.bootstrapTrees > 0) {
+    Logger::info << std::endl;
+    Logger::timed << "Asteroid will now compute " << arg.bootstrapTrees << " bootstrap trees" << std::endl;
     std::string bsTreesFile = arg.prefix + ".bsTrees.newick";
     ParallelOfstream bsOs(bsTreesFile);
     SplitHashtable splits;
+    index = 0;
     for (unsigned int i = 0; i < arg.bootstrapTrees; ++i) {
       SpeciesTrees startingBSTrees =
         generateRandomSpeciesTrees(speciesLabels, 
@@ -493,12 +509,16 @@ int main(int argc, char * argv[])
       ScoredTrees scoredBSTree = search(startingBSTrees,
         perCoreGeneCells,
         getPerCoreBSSampling(K),
-        arg.noCorrection);
+        arg.noCorrection,
+        false,
+        index);
       bsOs << scoredBSTree[0].tree->getNewickString() << std::endl;
       splits.addTree(*scoredBSTree[0].tree);
     }
     splits.computeSupportValues(bestTree);
+    bestTree.setAllBranchLengths(1.0);
     bestTree.save(outputSpeciesTreeFile);
+    Logger::timed << "Updating the best-scoring tree with support values into " << outputSpeciesTreeFile << std::endl;
   } 
   
   close();
