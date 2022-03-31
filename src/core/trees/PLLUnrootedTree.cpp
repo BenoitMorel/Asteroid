@@ -91,7 +91,7 @@ static corax_utree_t *createTreeFromLabels(const std::unordered_set<std::string>
     unsigned int seed)
 {
   std::vector<const char *> temp;
-  for (auto label: labels) {
+  for (auto &label: labels) {
     temp.push_back(label.c_str());
   }
   return corax_utree_random_create(static_cast<unsigned int>(temp.size()),
