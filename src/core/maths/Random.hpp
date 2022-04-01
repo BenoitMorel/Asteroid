@@ -8,7 +8,7 @@ public:
   static int getInt(); 
   static int getInt(int max); 
   static double getProba();
-
+  static std::mt19937_64 &getRNG() {return _rng;}
 private:
   static std::mt19937_64 _rng;
   static std::uniform_int_distribution<int> _unii;

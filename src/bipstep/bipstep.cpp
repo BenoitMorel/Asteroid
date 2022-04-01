@@ -235,12 +235,11 @@ double computeDistance(const Split &b1,
     const auto &s2 = rightSplits[i];
     auto v1 = interSize(b1, s1) + interSize(b2, s2); 
     auto v2 = interSize(b1, s2) + interSize(b2, s1); 
-    d += std::min(v1, v2);
+    d += v1 * v2; //std::min(v1, v2);
+    //d += std::min(v1, v2);
   }
   return d;
 }
-
-
 
 void insertTaxon(unsigned int spid,
     const std::string &label,
@@ -261,7 +260,7 @@ void insertTaxon(unsigned int spid,
         rightSplits);
   }
   Node *bestBranch = nullptr;
-  double bestDistance = 9999999.0;
+  double bestDistance = 9999999999.0;
   for (auto branch: tree.getBranches()) {
     auto leftBranchSplit = getSplit(branch, speciesToSpid, speciesNumber);
     auto rightBranchSplit = getSplit(branch->back, speciesToSpid, speciesNumber);
@@ -269,7 +268,7 @@ void insertTaxon(unsigned int spid,
         rightBranchSplit,
         leftSplits,
         rightSplits);
-    if (d < bestDistance) {
+    if (d <= bestDistance) {
       bestDistance = d;
       bestBranch = branch;
     }
@@ -306,9 +305,14 @@ int main(int argc, char * argv[])
   auto speciesLabels = mappings.getCoveredSpecies();
   std::vector<std::string> taxonSequence(speciesLabels.begin(),
       speciesLabels.end());
-  unsigned int iterations = 1;
+  unsigned int iterations = 10;
+  std::string outputFile = arg.prefix + ".newick";
+  std::ofstream os(outputFile);
   for (unsigned int iter = 0; iter < iterations; ++iter) {
-    Logger::info << "Here we should shuffle: " << std::endl; 
+    std::shuffle(taxonSequence.begin(),
+        taxonSequence.end(),
+        Random::getRNG());
+    Logger::info << "RUnning search " << iter << std::endl; 
     BitVector mask(speciesNumber, false);
     StepwiseTree speciesTree(taxonSequence[0],
         taxonSequence[1],
@@ -320,7 +324,6 @@ int main(int argc, char * argv[])
       auto label =  taxonSequence[taxonID];
       auto spid = speciesToSpid[label];
       mask.set(spid);
-      Logger::timed << "Inserting taxon " << label << "..." << std::endl;
       insertTaxon(spid,
           label,
           speciesToSpid, 
@@ -330,9 +333,7 @@ int main(int argc, char * argv[])
           speciesTree);
      // Logger::info << speciesTree.getNewickString() << std::endl;
     }
-    std::string outputFile = arg.prefix + ".newick";
     Logger::timed << "Saving tree into " << outputFile << std::endl;
-    std::ofstream os(outputFile);
     os << speciesTree.getNewickString() << std::endl;
   }
   return 0;
