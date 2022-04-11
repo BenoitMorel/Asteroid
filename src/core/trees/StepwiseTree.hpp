@@ -8,31 +8,23 @@ struct Node {
   unsigned int index;
   Node *back;
   Node *next;
-  std::string label;
   unsigned int spid;
 };
 
 class StepwiseTree
 {
   public:
-    StepwiseTree(const std::string &label1,
-        const std::string &label2,
-        const std::string &label3,
-        unsigned int spid1 = -1,
-        unsigned int spid2 = -1,
-        unsigned int spid3 = -1);
+    StepwiseTree();
 
     ~StepwiseTree();
  
-    void addLeaf(const std::string &label, 
-        Node *branch,
-        unsigned int spid = -1);
-
-    void removeLeaf(const std::string &label);
+    void addLeaf(unsigned int spid, 
+        Node *branch);
 
     Node *getRandomBranch();
+    Node *getAnyBranch();
 
-    std::string getNewickString();
+    std::string getNewickString(const std::vector<std::string> &spidToLabel);
 
     std::vector<Node *> getBranches();
   private:

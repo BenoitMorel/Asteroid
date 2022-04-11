@@ -19,6 +19,7 @@ private:
   unsigned int _N; // total number of taxa
   unsigned int _K; // number of gene trees (for this rank)
   const StringToUint &_speciesToSpid;
+  std::vector<std::string> _spidToSpecies;
   const std::vector<GeneCell *> &_geneCells;
   StepwiseTree _tree;
   BitVector _insertedSpecies;

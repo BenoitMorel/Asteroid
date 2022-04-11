@@ -12,11 +12,8 @@ StepwiseAsteroid::StepwiseAsteroid(const StringToUint &speciesToSpid,
   _N(speciesToSpid.size()),
   _K(geneCells.size()),
   _speciesToSpid(speciesToSpid),
+  _spidToSpecies(_N),
   _geneCells(geneCells),
-  _tree(initialLabels[0], initialLabels[1], initialLabels[2],
-      speciesToSpid.at(initialLabels[0]),
-      speciesToSpid.at(initialLabels[1]),
-      speciesToSpid.at(initialLabels[2])),
   _insertedSpecies(_N, false),
   _speciesMatrix(_N, std::vector<double>(_N, 0.0))
 
@@ -24,12 +21,18 @@ StepwiseAsteroid::StepwiseAsteroid(const StringToUint &speciesToSpid,
   for (const auto &label1: initialLabels) {
     _insertedSpecies.set(_speciesToSpid.at(label1));
     auto spid1 = speciesToSpid.at(label1);
+    _tree.addLeaf(spid1, _tree.getAnyBranch());
     for (const auto &label2: initialLabels) {
       if (label2 != label1) {
         auto spid2 = speciesToSpid.at(label2);
         _speciesMatrix[spid1][spid2] = 1.0;
       }
     }
+  }
+  for (auto pair: speciesToSpid) {
+    auto label = pair.first;
+    auto spid = pair.second;
+    _spidToSpecies[spid] = label;
   }
 }
   
@@ -164,13 +167,13 @@ void StepwiseAsteroid::insertLabel(const std::string &label)
       _speciesMatrix,
       _geneCells,
       _insertedSpecies);
-  _tree.addLeaf(label, bestBranch, spid);
+  _tree.addLeaf(spid, bestBranch);
 }
 
 void StepwiseAsteroid::exportTree(const std::string &outputPath)
 {
   ParallelOfstream os(outputPath);
-  os << _tree.getNewickString() << std::endl;
+  os << _tree.getNewickString(_spidToSpecies) << std::endl;
 
 }
 
