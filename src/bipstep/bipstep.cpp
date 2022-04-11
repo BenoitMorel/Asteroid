@@ -14,13 +14,13 @@
 #include <algorithm>
 #include <IO/ParallelOfstream.hpp>
 #include <maths/bitvector.hpp>
-#include "StepwiseTree.hpp"
+#include <trees/StepwiseTree.hpp>
 
 using TreePtr = std::shared_ptr<PLLUnrootedTree>;
 using Trees = std::vector<TreePtr>;
 using GeneTrees = Trees;
 using SpeciesTrees = Trees;
-
+using Coverages = std::vector<BitVector>;
 
 /**
  *  Read all trees from inputGeneTreeFile
@@ -235,8 +235,8 @@ double computeDistance(const Split &b1,
     const auto &s2 = rightSplits[i];
     auto v1 = interSize(b1, s1) + interSize(b2, s2); 
     auto v2 = interSize(b1, s2) + interSize(b2, s1); 
-    d += v1 * v2; //std::min(v1, v2);
-    //d += std::min(v1, v2);
+    auto diff = v1 * v2;
+    d += diff * diff;
   }
   return d;
 }
@@ -275,8 +275,70 @@ void insertTaxon(unsigned int spid,
   }
   assert(bestBranch);
   //auto branch = tree.getRandomBranch();
-  tree.addLeaf(label, bestBranch);
+  tree.addLeaf(label, bestBranch, spid);
 }
+
+void computeCoverages(GeneTrees &geneTrees,
+    unsigned int speciesNumber,
+    Coverages &coverages)
+{
+  for (auto &geneTree: geneTrees) {
+    coverages.push_back(BitVector(speciesNumber, false));
+    for (auto leaf: geneTree->getLeaves()) {
+      coverages.back().set(getSpid(leaf));
+    }
+  }
+}
+
+void reorderTaxa(std::vector<std::string> &taxa,
+    const Coverages &coverages,
+    const StringToUint &speciesToSpid,
+    bool random)
+{
+  if (random) {
+    std::shuffle(taxa.begin(), taxa.end(), Random::getRNG());
+    return;
+  }
+  unsigned int taxonNumber = taxa.size();
+  std::unordered_set<std::string> remainingTaxa(taxa.begin(), taxa.end());
+  auto firstTaxon = taxa[Random::getInt(taxa.size())]; 
+  taxa.clear();
+  BitVector mask(taxonNumber, false);
+  
+  taxa.push_back(firstTaxon);
+  mask.set(speciesToSpid.at(firstTaxon));
+  remainingTaxa.erase(firstTaxon);
+  while (remainingTaxa.size()) {
+    double bestScore = 0;
+    std::string bestTaxon;
+    for (auto taxon: remainingTaxa) {
+      double score = 0;
+      auto spid = speciesToSpid.at(taxon);
+      double den = 0.0;
+      for (auto &coverage: coverages) {
+        if (coverage[spid]) {
+          auto c = (coverage & mask).count();
+          score += c * c;
+          den += 1;
+        }
+      }
+      //score = score / den;
+      if (score > bestScore) {
+        bestScore = score;
+        bestTaxon = taxon;
+      }
+    }
+    assert(bestTaxon.size());
+    assert(speciesToSpid.find(bestTaxon) != speciesToSpid.end());
+    Logger::info << "Adding " << bestTaxon << " with score " << bestScore << std::endl;
+    auto bestSpid = speciesToSpid.at(bestTaxon);
+    taxa.push_back(bestTaxon);
+    mask.set(bestSpid);
+    remainingTaxa.erase(bestTaxon);
+  }
+}
+
+
 
 
 
@@ -292,7 +354,9 @@ int main(int argc, char * argv[])
   GeneSpeciesMapping mappings;
   // map species labels to species spid
   StringToUint speciesToSpid;
-   
+  // per family coverages
+  Coverages coverages;
+
 
   init(arg);
   readGeneTrees(arg.inputGeneTreeFile, geneTrees);
@@ -303,15 +367,14 @@ int main(int argc, char * argv[])
   extractMappings(arg, geneTrees, mappings, speciesToSpid); 
   unsigned int speciesNumber = mappings.getCoveredSpecies().size();
   auto speciesLabels = mappings.getCoveredSpecies();
+  computeCoverages(geneTrees, speciesNumber, coverages);
   std::vector<std::string> taxonSequence(speciesLabels.begin(),
       speciesLabels.end());
-  unsigned int iterations = 10;
+  unsigned int iterations = 1;
   std::string outputFile = arg.prefix + ".newick";
   std::ofstream os(outputFile);
   for (unsigned int iter = 0; iter < iterations; ++iter) {
-    std::shuffle(taxonSequence.begin(),
-        taxonSequence.end(),
-        Random::getRNG());
+    reorderTaxa(taxonSequence, coverages, speciesToSpid, arg.randomInsertion);
     Logger::info << "RUnning search " << iter << std::endl; 
     BitVector mask(speciesNumber, false);
     StepwiseTree speciesTree(taxonSequence[0],
@@ -322,6 +385,7 @@ int main(int argc, char * argv[])
     mask.set(speciesToSpid[taxonSequence[2]]);
     for (unsigned int taxonID = 3; taxonID < speciesNumber; ++taxonID) {
       auto label =  taxonSequence[taxonID];
+      Logger::info << "inserting " << label << "..." << std::endl;
       auto spid = speciesToSpid[label];
       mask.set(spid);
       insertTaxon(spid,

@@ -19,7 +19,10 @@ static void linkNext(Node *n1, Node *n2, Node *n3)
 
 StepwiseTree::StepwiseTree(const std::string &label1,
     const std::string &label2,
-    const std::string &label3)
+    const std::string &label3,
+    unsigned int spid1,
+    unsigned int spid2,
+    unsigned int spid3)
 {
   for (unsigned int i = 0; i < 6; ++i) {
     addNode(new Node());
@@ -27,6 +30,9 @@ StepwiseTree::StepwiseTree(const std::string &label1,
   _nodes[0]->label = label1;
   _nodes[1]->label = label2;
   _nodes[2]->label = label3;
+  _nodes[0]->spid = spid1;
+  _nodes[1]->spid = spid2;
+  _nodes[2]->spid = spid3;
   for (unsigned int i = 0; i < 3; ++i) {
     auto leaf = _nodes[i];
     auto node = _nodes[i + 3];
@@ -70,7 +76,8 @@ std::string StepwiseTree::getNewickString()
  
 
 void StepwiseTree::addLeaf(const std::string &label, 
-    Node *branch)
+    Node *branch,
+    unsigned int spid)
 {
   auto b1 = branch;
   auto b2 = branch->back;
@@ -83,7 +90,7 @@ void StepwiseTree::addLeaf(const std::string &label,
   addNode(n2);
   addNode(n3);
   leaf->label = label;
-  
+  leaf->spid = spid; 
   linkBack(leaf, n1);
   linkBack(n2, b1);
   linkBack(n3, b2);
@@ -116,5 +123,4 @@ void StepwiseTree::addNode(Node *node)
   node->index = _nodes.size();
   _nodes.push_back(node);
 }
-
 

@@ -12,6 +12,7 @@ struct Arguments {
 
   std::string inputGeneTreeFile;
   std::string prefix;
+  bool randomInsertion;
   // if this argument is not set, we assume
   // single-copy families and that gene names
   // correspond to species names

@@ -6,6 +6,7 @@
 Arguments::Arguments(int argc, char * argv[]):
   argc(argc),
   argv(argv),
+  randomInsertion(false),
   seed(1)
 {
   if (argc == 1) {
@@ -23,6 +24,8 @@ Arguments::Arguments(int argc, char * argv[]):
       prefix = std::string(argv[++i]);
     } else if (arg == "-m" || arg == "--gene-species-mapping") {
       geneSpeciesMapping = std::string(argv[++i]);
+    } else if (arg == "--random-insertion") {
+      randomInsertion = true;
     } else if (arg == "--seed") {
       seed = atoi(argv[++i]);
     } else {

@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <array>
-
+#include <memory>
 
 using VectorDouble = std::vector<double>;
 using MatrixDouble = std::vector<VectorDouble>;

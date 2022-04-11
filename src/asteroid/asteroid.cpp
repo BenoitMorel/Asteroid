@@ -9,32 +9,14 @@
 #include <trees/SplitHashtable.hpp>
 #include <DistanceMethods/InternodeDistance.hpp>
 #include <DistanceMethods/AsteroidOptimizer.hpp>
+#include <DistanceMethods/StepwiseAsteroid.hpp>
 #include <memory>
 #include <set>
 #include <algorithm>
 #include <IO/ParallelOfstream.hpp>
 #include <maths/bitvector.hpp>
 
-using TreePtr = std::shared_ptr<PLLUnrootedTree>;
-using Trees = std::vector<TreePtr>;
-using GeneTrees = Trees;
-using SpeciesTrees = Trees;
-struct ScoredTree {
-  TreePtr tree;
-  double score;
-  bool operator < (const ScoredTree& other) const {
-    return other.score < score;
-  }
-};
-using ScoredTrees = std::vector<ScoredTree>;
-
-struct GeneCell {
-  TreePtr geneTree;
-  DistanceMatrix distanceMatrix;
-  BitVector coverage;
-  std::vector<unsigned int> gidToSpid;
-  GeneCell(TreePtr ptr = nullptr): geneTree(ptr) {}
-};
+#include <DistanceMethods/AsteroidTypes.hpp>
 
 
 /**
@@ -407,6 +389,78 @@ Trees generateRandomSpeciesTrees(std::unordered_set<std::string> &labels,
   return trees;
 }
 
+void reorderTaxa(std::vector<std::string> &taxa,
+    const std::vector<GeneCell *> &geneCells,
+    const StringToUint &speciesToSpid,
+    bool random)
+{
+  if (random) {
+    std::shuffle(taxa.begin(), taxa.end(), Random::getRNG());
+    return;
+  }
+  unsigned int taxonNumber = taxa.size();
+  std::unordered_set<std::string> remainingTaxa(taxa.begin(), taxa.end());
+  auto firstTaxon = taxa[Random::getInt(taxa.size())]; 
+  taxa.clear();
+  BitVector mask(taxonNumber, false);
+  
+  taxa.push_back(firstTaxon);
+  mask.set(speciesToSpid.at(firstTaxon));
+  remainingTaxa.erase(firstTaxon);
+  while (remainingTaxa.size()) {
+    double bestScore = 0;
+    std::string bestTaxon;
+    for (auto taxon: remainingTaxa) {
+      double score = 0;
+      auto spid = speciesToSpid.at(taxon);
+      double den = 0.0;
+      for (auto cell: geneCells) {
+        const auto &coverage = cell->coverage;
+        if (coverage[spid]) {
+          auto c = (coverage & mask).count();
+          score += c * c;
+          den += 1;
+        }
+      }
+      ParallelContext::sumDouble(score);
+      ParallelContext::sumDouble(den);
+      //score = score / den;
+      if (score > bestScore) {
+        bestScore = score;
+        bestTaxon = taxon;
+      }
+    }
+    assert(bestTaxon.size());
+    assert(speciesToSpid.find(bestTaxon) != speciesToSpid.end());
+    Logger::info << "Adding " << bestTaxon << " with score " << bestScore << std::endl;
+    auto bestSpid = speciesToSpid.at(bestTaxon);
+    taxa.push_back(bestTaxon);
+    mask.set(bestSpid);
+    remainingTaxa.erase(bestTaxon);
+  }
+}
+
+void generateStepwiseTree(const StringToUint &speciesToSpid,
+    const std::vector<GeneCell *> &geneCells,
+    const std::string &outputTree)
+{
+  std::vector<std::string> labels;
+  for (const auto &pair: speciesToSpid) {
+    labels.push_back(pair.first);
+  }
+  reorderTaxa(labels, geneCells, speciesToSpid, false);
+  std::shuffle(labels.begin(), labels.end(), Random::getRNG());
+  std::array<std::string, 3> initialLabels({labels[0], 
+      labels[1], 
+      labels[2]});
+  StepwiseAsteroid stepwise(speciesToSpid,
+      geneCells,
+      initialLabels);
+  for (unsigned int i = 3; i < labels.size(); ++i) {
+    stepwise.insertLabel(labels[i]);
+  }
+  stepwise.exportTree(outputTree);
+}
 
 
 int main(int argc, char * argv[])
@@ -459,6 +513,17 @@ int main(int argc, char * argv[])
   getPerCoreGeneCells(geneCells, perCoreGeneCells);
   computeGeneDistances(arg, perCoreGeneCells);
 
+
+
+  std::string outputSpeciesTreeFile = arg.prefix + ".bestTree.newick";
+  if (arg.stepwise) {
+    generateStepwiseTree(speciesToSpid, 
+        geneCells,
+        outputSpeciesTreeFile);
+    close();
+    return 0;
+  }
+
   SpeciesTrees startingSpeciesTrees =
     generateRandomSpeciesTrees(speciesLabels, 
         speciesToSpid,
@@ -479,7 +544,6 @@ int main(int argc, char * argv[])
       arg.noCorrection,
       startingSpeciesTrees.size() == 1,
       index);
-  std::string outputSpeciesTreeFile = arg.prefix + ".bestTree.newick";
   std::string outputSpeciesTreesFile = arg.prefix + ".allTrees.newick";
   std::string outputScoresFile = arg.prefix + ".scores.txt"; 
   Logger::timed << "Final tree scores: " << std::endl;

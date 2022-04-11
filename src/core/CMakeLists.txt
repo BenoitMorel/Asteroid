@@ -3,6 +3,7 @@ set(asteroid-core_SOURCES
   DistanceMethods/InternodeDistance.cpp
   DistanceMethods/Asteroid.cpp
   DistanceMethods/AsteroidOptimizer.cpp
+  DistanceMethods/StepwiseAsteroid.cpp
   IO/Logger.cpp
   IO/GeneSpeciesMapping.cpp
   IO/ParallelOfstream.cpp
@@ -10,6 +11,7 @@ set(asteroid-core_SOURCES
   maths/Random.cpp
   trees/PLLUnrootedTree.cpp
   trees/SplitHashtable.cpp
+  trees/StepwiseTree.cpp
   parallelization/ParallelContext.cpp
   )
 

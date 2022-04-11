@@ -11,7 +11,8 @@ Arguments::Arguments(int argc, char * argv[]):
   seed(1),
   noCorrection(false),
   minBL(-1.0),
-  useGeneBL(false)
+  useGeneBL(false),
+  stepwise(false)
 {
   if (argc == 1) {
     printHelp();
@@ -38,8 +39,8 @@ Arguments::Arguments(int argc, char * argv[]):
       noCorrection = true;
     } else if (arg == "--min-bl") {
       minBL = atof(argv[++i]);
-    } else if (arg == "--use-gene-bl") {
-      useGeneBL = true;
+    } else if (arg == "--stepwise") {
+      stepwise = true;
     } else {
       Logger::info << "Unrecognized argument " << arg << std::endl;
       Logger::info << "Aborting" << std::endl;
