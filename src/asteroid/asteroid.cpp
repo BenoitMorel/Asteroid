@@ -450,14 +450,10 @@ void generateStepwiseTree(const StringToUint &speciesToSpid,
   }
   reorderTaxa(labels, geneCells, speciesToSpid, false);
   std::shuffle(labels.begin(), labels.end(), Random::getRNG());
-  std::array<std::string, 3> initialLabels({labels[0], 
-      labels[1], 
-      labels[2]});
   StepwiseAsteroid stepwise(speciesToSpid,
-      geneCells,
-      initialLabels);
-  for (unsigned int i = 3; i < labels.size(); ++i) {
-    stepwise.insertLabel(labels[i]);
+      geneCells);
+  for (const auto &label: labels) {
+    stepwise.insertLabel(label);
   }
   stepwise.exportTree(outputTree);
 }

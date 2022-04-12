@@ -8,8 +8,7 @@
 class StepwiseAsteroid {
 public:
   StepwiseAsteroid(const StringToUint &speciesToSpid,
-    const std::vector<GeneCell *> &geneCells,
-    const std::array<std::string, 3> initialLabels);
+    const std::vector<GeneCell *> &geneCells);
 
   void insertLabel(const std::string &label);
 
@@ -22,6 +21,7 @@ private:
   std::vector<std::string> _spidToSpecies;
   const std::vector<GeneCell *> &_geneCells;
   StepwiseTree _tree;
+  const std::vector<StepwiseTree> _inducedTrees;
   BitVector _insertedSpecies;
   DistanceMatrix _speciesMatrix;
 };

@@ -101,6 +101,12 @@ Node *StepwiseTree::getAnyBranch()
 std::vector<Node *> StepwiseTree::getBranches()
 {
   std::vector<Node *> branches;
+  if (_nodes.size() <= 1) {
+    if (_nodes.size() == 1) {
+      branches.push_back(_nodes[0]);
+    }
+    return branches;
+  }
   std::vector<bool> marked(_nodes.size(), false);
   for (auto branch: _nodes) {
     if (marked[branch->index]) {

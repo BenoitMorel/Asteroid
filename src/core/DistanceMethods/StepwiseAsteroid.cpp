@@ -7,28 +7,17 @@
 #include <set>
 
 StepwiseAsteroid::StepwiseAsteroid(const StringToUint &speciesToSpid,
-    const std::vector<GeneCell *> &geneCells,
-    const std::array<std::string, 3> initialLabels):
+    const std::vector<GeneCell *> &geneCells):
   _N(speciesToSpid.size()),
   _K(geneCells.size()),
   _speciesToSpid(speciesToSpid),
   _spidToSpecies(_N),
   _geneCells(geneCells),
+  _inducedTrees(_K),
   _insertedSpecies(_N, false),
   _speciesMatrix(_N, std::vector<double>(_N, 0.0))
 
 {
-  for (const auto &label1: initialLabels) {
-    _insertedSpecies.set(_speciesToSpid.at(label1));
-    auto spid1 = speciesToSpid.at(label1);
-    _tree.addLeaf(spid1, _tree.getAnyBranch());
-    for (const auto &label2: initialLabels) {
-      if (label2 != label1) {
-        auto spid2 = speciesToSpid.at(label2);
-        _speciesMatrix[spid1][spid2] = 1.0;
-      }
-    }
-  }
   for (auto pair: speciesToSpid) {
     auto label = pair.first;
     auto spid = pair.second;
@@ -94,12 +83,27 @@ void updateDistanceMatrixAux(unsigned int spid,
 }
     
 
+void printMatrix(const DistanceMatrix &m) {
+  for (const auto &v: m) {
+    for (const auto val: v) {
+      Logger::info << val << " ";
+    }
+    Logger::info << std::endl;
+  }
+}
+
 DistanceMatrix getUpdatedDistanceMatrix(unsigned int spid,
     Node *insertionBranch,
     const DistanceMatrix &speciesMatrix
     )
 {
   DistanceMatrix res(speciesMatrix);
+  if (!insertionBranch->back) {
+    // edge case:
+    // this is the second inserted taxa
+    // we don't need to update the matrix
+    return res;
+  }
   auto leftSubtree = insertionBranch;  
   auto rightSubtree = insertionBranch->back;  
   std::set<unsigned int> leftSpids;
@@ -119,14 +123,6 @@ DistanceMatrix getUpdatedDistanceMatrix(unsigned int spid,
 
 
 
-void printMatrix(const DistanceMatrix &m) {
-  for (const auto &v: m) {
-    for (const auto val: v) {
-      Logger::info << val << " ";
-    }
-    Logger::info << std::endl;
-  }
-}
 
 Node *findBestInsertionBranch(unsigned int spid, // of the taxa to add
     StepwiseTree &tree,
@@ -134,6 +130,7 @@ Node *findBestInsertionBranch(unsigned int spid, // of the taxa to add
     const std::vector<GeneCell *> &geneCells,
     const BitVector &addedSpids) // the spids that belong to the tree being built
 {
+  Logger::info << "find best insertion " << spid << std::endl;
   auto bestScore = std::numeric_limits<double>::max();
   Node *bestBranch = nullptr;
   for (auto branch: tree.getBranches()) {
@@ -151,8 +148,9 @@ Node *findBestInsertionBranch(unsigned int spid, // of the taxa to add
     }
   }
   Logger::info << "Best score " << bestScore << std::endl;
-  speciesMatrix = getUpdatedDistanceMatrix(spid, bestBranch, speciesMatrix);
-  assert(bestBranch);
+  if (bestBranch) {
+    speciesMatrix = getUpdatedDistanceMatrix(spid, bestBranch, speciesMatrix);
+  }
   return bestBranch;
 
 }
