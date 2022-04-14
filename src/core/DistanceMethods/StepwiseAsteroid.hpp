@@ -1,9 +1,12 @@
 #pragma once
-
+#include <memory>
 #include <util/types.hpp>
 #include <DistanceMethods/AsteroidTypes.hpp>
+#include <trees/InducedStepwiseTree.hpp>
 #include <trees/StepwiseTree.hpp>
+#include <trees/InducedStepwiseTree.hpp>
 
+using InducedStepwiseTrees = std::vector<std::unique_ptr<InducedStepwiseTree> >;
 
 class StepwiseAsteroid {
 public:
@@ -21,9 +24,9 @@ private:
   std::vector<std::string> _spidToSpecies;
   const std::vector<GeneCell *> &_geneCells;
   StepwiseTree _tree;
-  const std::vector<StepwiseTree> _inducedTrees;
+  InducedStepwiseTrees _inducedTrees;
   BitVector _insertedSpecies;
-  DistanceMatrix _speciesMatrix;
+  std::vector<DistanceMatrix> _speciesMatrices;
 };
 
 

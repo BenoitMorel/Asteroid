@@ -5,10 +5,10 @@
 #include <maths/bitvector.hpp>
 #include <trees/StepwiseTree.hpp>
 
-using NodeSet = std::unordered_set<Node *>;
+using BranchSet = std::unordered_set<Node *>;
 using InducedToSuperNodes = std::vector<Node *>;
 using SuperToInducedNodes = std::vector<Node *>;
-using InducedToSuperGhost = std::vector<NodeSet>;
+using InducedToSuperGhost = std::vector<BranchSet>;
 using NodeTriplet = std::array<Node *, 3>;
 class InducedStepwiseTree
 {
@@ -22,6 +22,8 @@ public:
 
   const StepwiseTree &getWrappedTree() const {return _inducedTree;}
 
+  BranchSet getSuperBranches(Node *inducedNode) const;
+  Node *getInducedBranch(Node *superNode) const {return _superToInduced[superNode->index];}
 
 private:
   // the induced tree beeing built

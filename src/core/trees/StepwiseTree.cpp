@@ -70,7 +70,7 @@ static void printAux(const std::vector<std::string> &spidToLabel,
     ss << ",";
     printAux(spidToLabel, node->next->next->back, ss);
     ss << ")";
-    ss << ":" << node->index << "-" <<  node->next->index << "-" <<  node->next->next->index;
+    //ss << ":" << node->index << "-" <<  node->next->index << "-" <<  node->next->next->index;
   } else {
     if (node->spid < spidToLabel.size()) {
       ss << spidToLabel[node->spid];

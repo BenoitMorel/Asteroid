@@ -514,7 +514,7 @@ int main(int argc, char * argv[])
   std::string outputSpeciesTreeFile = arg.prefix + ".bestTree.newick";
   if (arg.stepwise) {
     generateStepwiseTree(speciesToSpid, 
-        geneCells,
+        perCoreGeneCells,
         outputSpeciesTreeFile);
     close();
     return 0;

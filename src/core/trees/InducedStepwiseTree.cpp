@@ -126,8 +126,6 @@ bool findSuperLCAs(Node *node,
 void InducedStepwiseTree::addLeaf(Node *superLeaf,
       unsigned int spid)
 { 
-  
-  
   // this function has many special cases to consider
   // - is the new spid covered by this induced gene tree?
   // - how many taxa do we already have in the current induced tree? (0, 1, or more)
@@ -276,5 +274,23 @@ void InducedStepwiseTree::mapGhostUntilBound(Node *superGhost,
         false);
   }
 
+}
+  
+BranchSet InducedStepwiseTree::getSuperBranches(Node *inducedBranch) const
+{
+  BranchSet res = _inducedToSuperGhost[inducedBranch->index];
+  auto super1 = _inducedToSuper[inducedBranch->index];
+  if (res.find(super1->back) == res.end()) { 
+    // if the branch is not already in res, add it
+    res.insert(super1);
+  }
+  if (_taxaCount > 1) {
+    auto super2 = _inducedToSuper[inducedBranch->back->index];
+    if (res.find(super2->back) == res.end()) { 
+      // if the branch is not already in res, add it
+      res.insert(super2);
+    }
+  }
+  return res;
 }
 
