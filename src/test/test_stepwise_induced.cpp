@@ -34,10 +34,10 @@ int main(int argc, char ** argv)
       const auto &label = labels[i];
       std::cout << "Adding label " << label << " " << (coverage[i]) << std::endl;
       superTree.addLeaf(i, superTree.getRandomBranch());
-      std::cout << superTree.getNewickString(labels) << std::endl;
-      std::cout << inducedTree.getWrappedTree().getNewickString(labels) << std::endl;
-      std::cout << std::endl;
     }
+    std::cout << superTree.getNewickString(labels) << std::endl;
+    std::cout << inducedTree.getWrappedTree().getNewickString(labels) << std::endl;
+    std::cout << std::endl;
   }
   return 0;
 }
