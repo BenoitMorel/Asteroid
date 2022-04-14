@@ -12,6 +12,7 @@ set(asteroid-core_SOURCES
   trees/PLLUnrootedTree.cpp
   trees/SplitHashtable.cpp
   trees/StepwiseTree.cpp
+  trees/InducedStepwiseTree.cpp
   parallelization/ParallelContext.cpp
   )
 

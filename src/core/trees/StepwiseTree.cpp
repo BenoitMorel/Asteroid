@@ -3,6 +3,7 @@
 #include <iostream>
 #include <maths/Random.hpp>
 #include <cassert>
+#include <trees/InducedStepwiseTree.hpp>
 
 static void linkBack(Node *n1, Node *n2)
 {
@@ -21,14 +22,13 @@ StepwiseTree::StepwiseTree()
 {
 }
 
-void StepwiseTree::addLeaf(unsigned int spid,
+Node *StepwiseTree::addLeaf(unsigned int spid,
     Node *branch)
 {
   auto leaf = new Node();
   leaf->spid = spid;
   addNode(leaf);
   if (_nodes.size() == 1) { // first  leaf
-    return;
   } else if (_nodes.size() == 2) { // second leaf
     linkBack(leaf, branch);
   } else {
@@ -45,6 +45,10 @@ void StepwiseTree::addLeaf(unsigned int spid,
     linkBack(n3, b2);
     linkNext(n1, n2, n3);
   }
+  for (auto listener: _listeners) {
+    listener->addLeaf(leaf, spid);
+  }
+  return leaf;
 }
 
 
@@ -66,13 +70,30 @@ static void printAux(const std::vector<std::string> &spidToLabel,
     ss << ",";
     printAux(spidToLabel, node->next->next->back, ss);
     ss << ")";
+    ss << ":" << node->index << "-" <<  node->next->index << "-" <<  node->next->next->index;
   } else {
-    ss << spidToLabel[node->spid] << ":1.0";
+    if (node->spid < spidToLabel.size()) {
+      ss << spidToLabel[node->spid];
+    } else {
+      ss << "null";
+    }
+    
+    ss << ":" << node->index;
   }
 }
 
-std::string StepwiseTree::getNewickString(const std::vector<std::string> &spidToLabel)
+std::string StepwiseTree::getNewickString(const std::vector<std::string> &spidToLabel) const
 {
+  if (!_nodes.size()) {
+    return std::string();
+  } else if (_nodes.size() == 1) {
+    std::string res;
+    if (spidToLabel.size()) {
+      res = spidToLabel.at(_nodes[0]->spid);
+    }
+    res += ";";
+    return res;
+  }
   std::stringstream ss;
   auto root = _nodes[1];
   ss << "(";
@@ -86,6 +107,9 @@ std::string StepwiseTree::getNewickString(const std::vector<std::string> &spidTo
 
 Node *StepwiseTree::getRandomBranch()
 {
+  if (!_nodes.size()) {
+    return nullptr;
+  }
   return _nodes[Random::getInt(_nodes.size())];
 }
     
@@ -98,7 +122,7 @@ Node *StepwiseTree::getAnyBranch()
   }
 }
     
-std::vector<Node *> StepwiseTree::getBranches()
+std::vector<Node *> StepwiseTree::getBranches() const
 {
   std::vector<Node *> branches;
   if (_nodes.size() <= 1) {
@@ -124,5 +148,10 @@ void StepwiseTree::addNode(Node *node)
 {
   node->index = _nodes.size();
   _nodes.push_back(node);
+}
+    
+void StepwiseTree::addListener(InducedStepwiseTree *listener)
+{
+  _listeners.push_back(listener);
 }
 
