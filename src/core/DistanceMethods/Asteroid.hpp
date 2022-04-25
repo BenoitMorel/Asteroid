@@ -7,8 +7,6 @@
 #include <trees/PLLUnrootedTree.hpp>
 #include <maths/bitvector.hpp>
 
-using BoolMatrix = std::vector< std::vector<bool> >;
-using UIntMatrix = std::vector< std::vector<unsigned int> >;
 
 struct SPRMove {
   corax_unode_t *pruneNode;

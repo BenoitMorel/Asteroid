@@ -278,7 +278,12 @@ void InducedStepwiseTree::mapGhostUntilBound(Node *superGhost,
   
 BranchSet InducedStepwiseTree::getSuperBranches(Node *inducedBranch) const
 {
-  BranchSet res = _inducedToSuperGhost[inducedBranch->index];
+  BranchSet res;
+  for (auto super: _inducedToSuperGhost[inducedBranch->index]) {
+    if (res.find(super->back) == res.end()) { 
+      res.insert(super);
+    }
+  }
   auto super1 = _inducedToSuper[inducedBranch->index];
   if (res.find(super1->back) == res.end()) { 
     // if the branch is not already in res, add it

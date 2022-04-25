@@ -12,6 +12,8 @@ using VectorUint = std::vector<unsigned int>;
 using MatrixUint = std::vector<VectorUint>;
 using StringToUint = std::unordered_map<std::string, unsigned int>;
 using StringToInt = std::unordered_map<std::string, int>;
+using BoolMatrix = std::vector< std::vector<bool> >;
+using UIntMatrix = std::vector< std::vector<unsigned int> >;
 
 using SPID = unsigned int; // species ID
 using BID = unsigned int; // branch ID

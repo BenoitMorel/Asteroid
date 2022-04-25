@@ -23,6 +23,7 @@ private:
   const StringToUint &_speciesToSpid;
   std::vector<std::string> _spidToSpecies;
   const std::vector<GeneCell *> &_geneCells;
+  UIntMatrix _spidToGid;
   StepwiseTree _tree;
   InducedStepwiseTrees _inducedTrees;
   BitVector _insertedSpecies;

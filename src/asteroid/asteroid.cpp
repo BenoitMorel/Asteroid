@@ -403,7 +403,8 @@ void reorderTaxa(std::vector<std::string> &taxa,
   auto firstTaxon = taxa[Random::getInt(taxa.size())]; 
   taxa.clear();
   BitVector mask(taxonNumber, false);
-  
+ 
+  Logger::info << "Adding " << firstTaxon << std::endl;
   taxa.push_back(firstTaxon);
   mask.set(speciesToSpid.at(firstTaxon));
   remainingTaxa.erase(firstTaxon);
