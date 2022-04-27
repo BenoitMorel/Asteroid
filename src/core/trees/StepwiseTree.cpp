@@ -113,11 +113,21 @@ Node *StepwiseTree::getRandomBranch()
   return _nodes[Random::getInt(_nodes.size())];
 }
     
-Node *StepwiseTree::getAnyBranch()
+Node *StepwiseTree::getAnyBranch() const
 {
   if (!_nodes.size()) {
     return nullptr;
   } else {
+    return _nodes[0];
+  }
+}
+
+Node *StepwiseTree::getAnyLeaf() const
+{
+  if (!_nodes.size()) {
+    return nullptr;
+  } else {
+    assert(!_nodes[0]->next);
     return _nodes[0];
   }
 }
@@ -153,5 +163,13 @@ void StepwiseTree::addNode(Node *node)
 void StepwiseTree::addListener(InducedStepwiseTree *listener)
 {
   _listeners.push_back(listener);
+}
+Node *StepwiseTree::getOtherNext(Node *n1, Node *n2)
+{
+  if (n1->next == n2) {
+    return n1->next->next;
+  } else {
+    return n1->next;
+  }
 }
 

@@ -152,7 +152,7 @@ void computeGeneDistances(const Arguments &arg,
         idParams);
   }
 }
-  
+
 /**
  *  Compute the coverage pattern of each gene tree
  */

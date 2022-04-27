@@ -1,4 +1,5 @@
 #pragma once
+#include <map>
 #include <memory>
 #include <util/types.hpp>
 #include <DistanceMethods/AsteroidTypes.hpp>
@@ -7,6 +8,8 @@
 #include <trees/InducedStepwiseTree.hpp>
 
 using InducedStepwiseTrees = std::vector<std::unique_ptr<InducedStepwiseTree> >;
+
+using IntPairToDouble = std::map <std::pair<unsigned int, unsigned int>, double>;
 
 class StepwiseAsteroid {
 public:
@@ -28,6 +31,12 @@ private:
   InducedStepwiseTrees _inducedTrees;
   BitVector _insertedSpecies;
   std::vector<DistanceMatrix> _speciesMatrices;
+
+  // information to compute the score diff
+  std::vector<IntPairToDouble> _deltas;
+  MatrixDouble _phis;
+
+  void _updateDeltas(unsigned int spid);
 };
 
 

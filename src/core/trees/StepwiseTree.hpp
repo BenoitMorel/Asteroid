@@ -24,13 +24,14 @@ class StepwiseTree
         Node *branch);
 
     Node *getRandomBranch();
-    Node *getAnyBranch();
+    Node *getAnyBranch() const;
+    Node *getAnyLeaf() const;
     void addListener(InducedStepwiseTree *listener);
 
     std::string getNewickString(const std::vector<std::string> &spidToLabel) const;
 
     std::vector<Node *> getBranches() const;
-    
+    static Node *getOtherNext(Node *n1, Node *n2);
     const std::vector<Node *> &getAllNodes() const {return _nodes;}
   private:
     void addNode(Node *node);
