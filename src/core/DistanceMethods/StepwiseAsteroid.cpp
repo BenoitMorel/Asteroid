@@ -4,7 +4,6 @@
 #include <IO/ParallelOfstream.hpp>
 #include <IO/Logger.hpp>
 #include <parallelization/ParallelContext.hpp>
-#include <set>
 
 StepwiseAsteroid::StepwiseAsteroid(const StringToUint &speciesToSpid,
     const std::vector<GeneCell *> &geneCells):
@@ -17,6 +16,7 @@ StepwiseAsteroid::StepwiseAsteroid(const StringToUint &speciesToSpid,
   _insertedSpecies(_N, false),
   _speciesMatrices(_K),
   _deltas(_K),
+  _slowDeltas(_K),
   _phis(_K)
 
 {
@@ -32,7 +32,11 @@ StepwiseAsteroid::StepwiseAsteroid(const StringToUint &speciesToSpid,
     _tree.addListener(_inducedTrees.back().get());
 
     auto Nk = geneCells[k]->coverage.count();
-    _phis[k].resize(Nk * 4 - 6);
+    auto internalNodes = Nk * 4 - 6;
+    _phis[k].resize(internalNodes);
+
+    _deltas[k] = MatrixDouble(internalNodes, 
+        std::vector<double>(internalNodes, 0.0));;
     _speciesMatrices[k] = DistanceMatrix(Nk, std::vector<double>(Nk, 0.0));
     auto &spidToGid = _spidToGid[k];
     auto &gidToSpid = _geneCells[k]->gidToSpid;
@@ -40,6 +44,9 @@ StepwiseAsteroid::StepwiseAsteroid(const StringToUint &speciesToSpid,
     for (unsigned int gid = 0; gid < gidToSpid.size(); ++gid) {
       spidToGid[gidToSpid[gid]] = gid;
     }
+  }
+  for (unsigned int i = 0; i < _N; ++i) {
+    _pows.push_back(std::pow(0.5, double(i)));
   }
 }
   
@@ -215,19 +222,20 @@ Node *findBestInsertionBranch(unsigned int spid, // of the taxa to add
     if (inducedSpeciesTree.getWrappedTree().getBranches().size() <= 2) {
       continue;
     }
-    if (geneCells[k]->coverage[spid]) {
-      computeDiff(inducedSpeciesTree.getWrappedTree().getAnyLeaf()->back,
-        0.0,
-        nullptr,
-        deltas[k],
-        diffVector, 
-        phis[k]);
-      for (auto inducedBranch: inducedSpeciesTree.getWrappedTree().getBranches()) {
-        for (auto superBranch: inducedSpeciesTree.getSuperBranches(inducedBranch)) {
-          auto score = diffVector[inducedBranch->index];
-          perSuperBranchScore[superBranch->index] += score;       
-          perSuperBranchScore[superBranch->back->index] += score;       
-        }
+    if (!geneCells[k]->coverage[spid]) {
+      continue;
+    }
+    computeDiff(inducedSpeciesTree.getWrappedTree().getAnyLeaf()->back,
+      0.0,
+      nullptr,
+      deltas[k],
+      diffVector, 
+      phis[k]);
+    for (auto inducedBranch: inducedSpeciesTree.getWrappedTree().getBranches()) {
+      for (auto superBranch: inducedSpeciesTree.getSuperBranches(inducedBranch)) {
+        auto score = diffVector[inducedBranch->index];
+        perSuperBranchScore[superBranch->index] += score;       
+        perSuperBranchScore[superBranch->back->index] += score;       
       }
     }
   }
@@ -314,7 +322,7 @@ void getSubClade(Node * node,
   }
 }
 
-double computeDelta(std::set<Node *>&s1,
+double StepwiseAsteroid::_computeDelta(std::set<Node *>&s1,
     std::set<Node *>s2,
     const DistanceMatrix &geneMatrix,
     const DistanceMatrix &speciesMatrix,
@@ -325,14 +333,14 @@ double computeDelta(std::set<Node *>&s1,
     auto gid1 = spidToGid[node1->spid];
     for (auto node2: s2) {
       auto gid2 = spidToGid[node2->spid];
-      delta += geneMatrix[gid1][gid2] * pow(0.5, speciesMatrix[gid1][gid2]); 
+      delta += geneMatrix[gid1][gid2] * _pows[speciesMatrix[gid1][gid2]]; 
     }
   } 
   return delta;
 }
 
 
-double getPhi(unsigned int gid,
+double StepwiseAsteroid::_getPhi(unsigned int gid,
     Node *node,
     const DistanceMatrix &geneMatrix,
     const std::vector<unsigned int> &spidToGid,
@@ -340,26 +348,43 @@ double getPhi(unsigned int gid,
 {
   if (!node->next) {
     auto gid2 = spidToGid[node->spid];
-    return geneMatrix[gid][gid2] * pow(0.5, depth);
+    return geneMatrix[gid][gid2] * _pows[depth];
   } else {
     double res = 0.0;
-    res += getPhi(gid, node->next->back, geneMatrix, spidToGid, depth + 1.0);
-    res += getPhi(gid, node->next->next->back, geneMatrix, spidToGid, depth + 1.0);
+    res += _getPhi(gid, node->next->back, geneMatrix, spidToGid, depth + 1.0);
+    res += _getPhi(gid, node->next->next->back, geneMatrix, spidToGid, depth + 1.0);
     return res;
   }
 }
 
-void StepwiseAsteroid::_updateDeltas(unsigned int spid)
+void fillDeltaForAddedTaxon(Node *node,
+    unsigned int taxonGid,
+    const DistanceMatrix &geneDistances,
+    DistanceMatrix &deltas)
 {
+  if (!node->next) {
+  }
+}
 
+
+void StepwiseAsteroid::_updatePhis(unsigned int spid)
+{
   for (unsigned int k = 0; k < _K; ++k) {
     auto gid = _spidToGid[k][spid];
     for (auto node: _inducedTrees[k]->getWrappedTree().getAllNodes()) {
-      _phis[k][node->index] = getPhi(gid,
+      _phis[k][node->index] = _getPhi(gid,
           node, 
           _geneCells[k]->distanceMatrix,
           _spidToGid[k],
           0.0);
+    }
+  }
+}
+      
+void StepwiseAsteroid::_updateDeltas()
+{
+  for (unsigned int k = 0; k < _K; ++k) {
+    for (auto node: _inducedTrees[k]->getWrappedTree().getAllNodes()) {
       if (!node->next) {
         continue;
       }
@@ -370,7 +395,7 @@ void StepwiseAsteroid::_updateDeltas(unsigned int spid)
       auto nodeC = node->next->next->back;
       getSubClade(nodeB, cladeB);
       getSubClade(nodeC, cladeC);
-      auto d = computeDelta(cladeB,
+      auto d = _computeDelta(cladeB,
           cladeC,
           _geneCells[k]->distanceMatrix,
           _speciesMatrices[k],
@@ -378,8 +403,8 @@ void StepwiseAsteroid::_updateDeltas(unsigned int spid)
       std::pair<unsigned int, unsigned int> p1, p2;
       p1 = {nodeB->back->index, nodeC->back->index};
       p2 = {nodeC->back->index, nodeB->back->index};
-      _deltas[k][p1] = d;
-      _deltas[k][p2] = d;
+      _slowDeltas[k][p1] = d;
+      _slowDeltas[k][p2] = d;
     }
 
   }
@@ -397,14 +422,15 @@ void StepwiseAsteroid::insertLabel(const std::string &label)
     _tree.addLeaf(spid, _tree.getAnyBranch());
     return;
   }
-  _updateDeltas(spid);
+  _updateDeltas();
+  _updatePhis(spid);
   auto bestBranch = findBestInsertionBranch(spid,
       _tree,
       _inducedTrees,
       _speciesMatrices,
       _geneCells,
       _spidToGid,
-      _deltas,
+      _slowDeltas,
       _phis,
       _insertedSpecies);
   _tree.addLeaf(spid, bestBranch);
