@@ -16,7 +16,7 @@ static corax_unode_t *getOtherNext(corax_unode_t *n1,
   }
 }
 
-static DistanceMatrix getNullMatrix(unsigned int N,
+static DistanceMatrix getNullMatrix(size_t N,
     double value = 0.0)
 {
   std::vector<double> nullDistances(N, value);
@@ -51,7 +51,7 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
   for (unsigned int k = 0; k < _K; ++k) {
     auto geneLeafNumber = gidToSpid[k].size();
     auto geneNodeNumber = _inducedNodeNumber[k];
-    _prunedSpeciesMatrices[k] = getNullMatrix(geneLeafNumber);
+    _prunedSpeciesMatrices[k] = getNullMatrix(static_cast<size_t>(geneLeafNumber));
     _avDistances[k] = MatrixDouble(geneNodeNumber, 
         std::vector<double>(geneNodeNumber));
     for (unsigned int gid1 = 0; gid1 < geneLeafNumber; ++gid1) {
@@ -76,6 +76,7 @@ double Asteroid::computeLength(const PLLUnrootedTree &speciesTree)
     for (unsigned int i = 0; i < geneLeafNumber; ++i) {
       for (unsigned int j = 0; j < i; ++j) {
         auto v = _geneDistanceMatrices[k][i][j];
+        Logger::info << _prunedSpeciesMatrices[k][i][j] << std::endl;
         res += v * _pows[_prunedSpeciesMatrices[k][i][j]];
       }
     }

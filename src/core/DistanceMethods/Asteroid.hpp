@@ -80,7 +80,7 @@ private:
   size_t _K;
   // _perFamilyCoverage[k][i] is true if the family k covers the species i
   std::vector<BitVector> _perFamilyCoverage;
-  std::vector<unsigned int> _inducedNodeNumber;
+  std::vector<size_t> _inducedNodeNumber;
   // _pows[i] == pow(2, i) (precomputed to speedup computations)
   std::vector<double> _pows;
   // trees induced by the current species tree and
