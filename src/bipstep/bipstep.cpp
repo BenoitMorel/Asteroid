@@ -260,7 +260,7 @@ void insertTaxon(unsigned int spid,
         rightSplits);
   }
   Node *bestBranch = nullptr;
-  double bestDistance = 9999999999.0;
+  double bestDistance = std::numeric_limits<double>::max();
   for (auto branch: tree.getBranches()) {
     auto leftBranchSplit = getSplit(branch, speciesToSpid, speciesNumber);
     auto rightBranchSplit = getSplit(branch->back, speciesToSpid, speciesNumber);

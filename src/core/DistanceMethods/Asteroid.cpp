@@ -76,8 +76,7 @@ double Asteroid::computeLength(const PLLUnrootedTree &speciesTree)
     for (unsigned int i = 0; i < geneLeafNumber; ++i) {
       for (unsigned int j = 0; j < i; ++j) {
         auto v = _geneDistanceMatrices[k][i][j];
-        Logger::info << _prunedSpeciesMatrices[k][i][j] << std::endl;
-        res += v * _pows[_prunedSpeciesMatrices[k][i][j]];
+        res += v * _pows[static_cast<size_t>(_prunedSpeciesMatrices[k][i][j])];
       }
     }
   }

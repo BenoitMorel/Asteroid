@@ -328,11 +328,11 @@ void ParallelContext::concatenateHetherogeneousDoubleVectors(
   }
   MPI_Gatherv(&localVector[0],  // send buffer 
       localVector.size(),       // send count
-      MPI::DOUBLE,              // send type
+      MPI_DOUBLE,              // send type
       &globalVector[0],         // receive buffer 
       &vectorSizes[0],          // receive counts
       &displ[0],                // per rank offset 
-      MPI::DOUBLE,              // receive type
+      MPI_DOUBLE,              // receive type
       0,                       // root rank
       getComm());
 #else

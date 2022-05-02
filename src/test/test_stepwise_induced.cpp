@@ -6,7 +6,7 @@
 #include <trees/StepwiseTree.hpp>
 #include <trees/InducedStepwiseTree.hpp>
 
-int main(int argc, char ** argv)
+int main(int, char **)
 {
   Random::setSeed(42);
   auto ITERATIONS = 1;

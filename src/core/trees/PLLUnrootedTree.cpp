@@ -7,6 +7,7 @@
 #include <sstream>
 #include <deque>
 #include <algorithm>
+#include <map>
 
 void defaultUnodePrinter(corax_unode_t *node, 
     std::stringstream &ss)

@@ -6,7 +6,7 @@
 #include <unordered_set>
 #include <trees/PLLUnrootedTree.hpp>
 #include <maths/bitvector.hpp>
-
+#include <limits>
 
 struct SPRMove {
   corax_unode_t *pruneNode;
@@ -21,9 +21,6 @@ struct SPRMove {
   
   bool operator < (const SPRMove& other) const {
     return other.score < score;
-  }
-  bool operator ==(const SPRMove& other) const {
-    return other.score == score;
   }
 };
 
@@ -61,7 +58,7 @@ private:
     unsigned int maxRadius;
     unsigned int maxRadiusWithoutImprovement;
     unsigned int noImprovement;
-    StopCriterion(): maxRadius(99999),
+    StopCriterion(): maxRadius(std::numeric_limits<unsigned int >::max()),
       maxRadiusWithoutImprovement(4),
       noImprovement(0)
       {}
