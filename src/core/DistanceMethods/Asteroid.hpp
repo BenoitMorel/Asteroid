@@ -84,7 +84,7 @@ private:
   // each family coverage pattern
   std::vector<std::shared_ptr<PLLUnrootedTree> > _inducedSpeciesTrees; 
   // internode distance matrices of the induced species trees
-  std::vector<DistanceMatrix> _prunedSpeciesMatrices;
+  std::vector<UIntMatrix> _prunedSpeciesMatrices;
   // mapping between species tree prining nodes and 
   // induced tree pruning nodes
   std::vector<NodeVector> _superToInducedNodes; 

@@ -22,6 +22,12 @@ static DistanceMatrix getNullMatrix(size_t N,
   std::vector<double> nullDistances(N, value);
   return DistanceMatrix(N, nullDistances); 
 }
+static UIntMatrix getNullMatrixUInt(size_t N,
+    unsigned int value = 0)
+{
+  std::vector<unsigned int> nullDistances(N, value);
+  return UIntMatrix(N, nullDistances); 
+}
 
 Asteroid::Asteroid(const PLLUnrootedTree &speciesTree, 
       const std::vector<BitVector> &perFamilyCoverage,
@@ -46,12 +52,12 @@ Asteroid::Asteroid(const PLLUnrootedTree &speciesTree,
   for (unsigned int i = 0; i < speciesTree.getLeavesNumber() + 3; ++i) {
     _pows.push_back(std::pow(0.5, i));
   }
-  _prunedSpeciesMatrices = std::vector<DistanceMatrix>(_K);
+  _prunedSpeciesMatrices = std::vector<UIntMatrix>(_K);
   _avDistances.resize(_K);
   for (unsigned int k = 0; k < _K; ++k) {
     auto geneLeafNumber = gidToSpid[k].size();
     auto geneNodeNumber = _inducedNodeNumber[k];
-    _prunedSpeciesMatrices[k] = getNullMatrix(static_cast<size_t>(geneLeafNumber));
+    _prunedSpeciesMatrices[k] = getNullMatrixUInt(static_cast<size_t>(geneLeafNumber));
     _avDistances[k] = MatrixDouble(geneNodeNumber, 
         std::vector<double>(geneNodeNumber));
     for (unsigned int gid1 = 0; gid1 < geneLeafNumber; ++gid1) {
@@ -76,7 +82,7 @@ double Asteroid::computeLength(const PLLUnrootedTree &speciesTree)
     for (unsigned int i = 0; i < geneLeafNumber; ++i) {
       for (unsigned int j = 0; j < i; ++j) {
         auto v = _geneDistanceMatrices[k][i][j];
-        res += v * _pows[static_cast<size_t>(_prunedSpeciesMatrices[k][i][j])];
+        res += v * _pows[_prunedSpeciesMatrices[k][i][j]];
       }
     }
   }

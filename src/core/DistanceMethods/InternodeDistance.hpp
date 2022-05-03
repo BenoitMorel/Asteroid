@@ -26,8 +26,12 @@ public:
     DistanceMatrix &distanceMatrix,
     const IDParam &param);
 
-  static void computeFromSpeciesTree(PLLUnrootedTree &geneTree,
-    DistanceMatrix &distanceMatrix);
+  /**
+   *  Compute the internode distance between each per of species
+   *  This distance is represented with integer values!
+   */
+  static void computeFromSpeciesTree(PLLUnrootedTree &speciesTree,
+    UIntMatrix &distanceMatrix);
 
 };
 
