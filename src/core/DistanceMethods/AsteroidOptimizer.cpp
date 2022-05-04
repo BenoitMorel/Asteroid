@@ -1,6 +1,11 @@
 #include "AsteroidOptimizer.hpp" 
 #include <IO/Logger.hpp>
 #include <trees/PLLUnrootedTree.hpp>
+  
+AsteroidOptimizer::~AsteroidOptimizer()
+{
+
+}
 
 double AsteroidOptimizer::eval(PLLUnrootedTree &tree)
 {
@@ -132,7 +137,8 @@ bool AsteroidOptimizer::computeAndApplyBestSPR()
     if (_verbose) {
       Logger::info << "New score " << newScore << " worse than last score " << _lastScore << std::endl;
     }
-    for (int i = rollbacks.size() - 1; i >= 1; --i) {
+    for (unsigned int i = static_cast<unsigned int>(rollbacks.size()) - 1;
+        i >= 1; --i) {
       corax_tree_rollback(&rollbacks[i]);
     }
     newScore = -_asteroid.computeLength(_speciesTree);

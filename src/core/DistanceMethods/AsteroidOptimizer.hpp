@@ -19,7 +19,7 @@ public:
       const UIntMatrix &gidToSpid,
       const std::vector<DistanceMatrix> &distanceMatrices,
       bool verbose);
-  virtual ~AsteroidOptimizer() {}
+  virtual ~AsteroidOptimizer();
   /**
    *  Runs the optimization
    */

@@ -246,7 +246,7 @@ void insertTaxon(unsigned int spid,
     StringToUint &speciesToSpid,
     unsigned int speciesNumber,
     const BitVector &mask,
-    GeneTrees &perCoreGeneTrees,
+    const GeneTrees &perCoreGeneTrees,
     StepwiseTree &tree)
 {
   std::vector<Split> leftSplits;

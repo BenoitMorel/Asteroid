@@ -498,8 +498,9 @@ bool ParallelContext::isIntEqual(int value)
 #ifdef WITH_MPI
   std::vector<int> rands(getSize());
   allGatherInt(value, rands);
+  auto any = rands[0];
   for (auto v: rands) {
-    if (v != rands[0]) {
+    if (v != any) {
       return false;
     }
   }
@@ -512,12 +513,18 @@ bool ParallelContext::isDoubleEqual(double value)
 #ifdef WITH_MPI
   std::vector<double> rands(getSize());
   allGatherDouble(value, rands);
+  auto any = rands[0];
   for (auto v: rands) {
-    if (fabs(v - rands[0]) > 0.00000001) {
+    if (fabs(v - any) > 0.00000001) {
       return false;
     }
   }
 #endif
   return true;
+}
+    
+const char* ParallelContext::ParallelException::what() const noexcept 
+{
+  return msg_.c_str();
 }
 

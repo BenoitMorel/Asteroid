@@ -6,7 +6,10 @@
 class InducedStepwiseTree;
 
 struct Node {
-  Node(): index(-1), back(nullptr), next(nullptr), spid(-1) {}
+  Node(): index(static_cast<unsigned int>(-1)), 
+  back(nullptr), 
+  next(nullptr), 
+  spid(static_cast<unsigned int>(-1)) {}
   unsigned int index;
   Node *back;
   Node *next;

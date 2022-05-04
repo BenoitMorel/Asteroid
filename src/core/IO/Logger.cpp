@@ -59,4 +59,9 @@ void Logger::close() {
   delete(logFile);
   logFile = saveLogFile = nullptr;
 }
+  
+Logger::~Logger()
+{
+
+}
 

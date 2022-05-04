@@ -15,7 +15,7 @@ class InducedStepwiseTree
 public:
   InducedStepwiseTree(const StepwiseTree &superTree,
       const BitVector &coverage);
-  virtual ~InducedStepwiseTree() {}
+  virtual ~InducedStepwiseTree();
 
   void addLeaf(Node *superLeaf,
       unsigned int spid);

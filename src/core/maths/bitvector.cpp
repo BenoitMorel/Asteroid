@@ -111,7 +111,7 @@ Bitvector::Bitvector( Bitvector const& other, size_t max_size )
         max_size = other.size();
     }
     size_ = max_size;
-    auto const ds = (size_ / IntSize) + (size_ % IntSize == 0 ? 0 : 1);
+    const unsigned long ds = (size_ / IntSize) + (size_ % IntSize == 0 ? 0 : 1);
     assert( ds <= other.data_.size() );
     data_ = std::vector<IntType>( other.data_.begin(), other.data_.begin() + ds );
     unset_padding_();

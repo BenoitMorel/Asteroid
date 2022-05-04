@@ -1,6 +1,7 @@
 #pragma once
 #include <random>
 
+
 class Random {
 public:
   Random() = delete;
@@ -8,9 +9,14 @@ public:
   static int getInt(); 
   static int getInt(int max); 
   static double getProba();
-  static std::mt19937_64 &getRNG() {return _rng;}
+  static std::mt19937_64 &getRNG() {return _d._rng;}
 private:
-  static std::mt19937_64 _rng;
-  static std::uniform_int_distribution<int> _unii;
-  static std::uniform_real_distribution<double> _uniproba;
+  struct Distributions {
+    std::mt19937_64 _rng;
+    std::uniform_int_distribution<int> _unii;
+    std::uniform_real_distribution<double> _uniproba;
+  };
+
+  static Distributions _d;
+  
 };

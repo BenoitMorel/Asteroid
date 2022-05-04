@@ -12,12 +12,12 @@ struct SPRMove {
   corax_unode_t *pruneNode;
   corax_unode_t *regraftNode;
   double score;
-  SPRMove(corax_unode_t *pruneNode,
-      corax_unode_t *regraftNode,
-      double score): 
-    pruneNode(pruneNode),
-    regraftNode(regraftNode),
-    score(score) {}
+  SPRMove(corax_unode_t *p,
+      corax_unode_t *r,
+      double s): 
+    pruneNode(p),
+    regraftNode(r),
+    score(s) {}
   
   bool operator < (const SPRMove& other) const {
     return other.score < score;

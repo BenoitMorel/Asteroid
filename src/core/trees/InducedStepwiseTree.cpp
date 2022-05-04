@@ -11,6 +11,11 @@ InducedStepwiseTree::InducedStepwiseTree(const StepwiseTree &superTree,
 {
 }
 
+InducedStepwiseTree::~InducedStepwiseTree()
+{
+
+}
+
 void InducedStepwiseTree::mapNodes(Node *superNode,
     Node *inducedNode)
 {
@@ -39,12 +44,6 @@ void InducedStepwiseTree::unmapGhostNode(Node *superNode)
   _superToInduced[superNode->index] = nullptr;
   _inducedToSuperGhost[inducedBranch->index].erase(superNode);
   _inducedToSuperGhost[inducedBranch->back->index].erase(superNode);
-}
-
-static bool areSameInnerNode(Node *n1, Node *n2)
-{
-  assert(n1 != n2);
-  return n1->next == n2 || n1->next->next == n2;
 }
 
 bool findSuperLCAs(Node *node, 

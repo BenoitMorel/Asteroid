@@ -36,8 +36,9 @@ StepwiseAsteroid::StepwiseAsteroid(const StringToUint &speciesToSpid,
     _phis[k].resize(internalNodes);
 
     _deltas[k] = MatrixDouble(internalNodes, 
-        std::vector<double>(internalNodes, 0.0));;
-    _speciesMatrices[k] = DistanceMatrix(Nk, std::vector<double>(Nk, 0.0));
+        std::vector<double>(internalNodes, 0.0));
+    _speciesMatrices[k] = UIntMatrix(Nk, 
+        std::vector<unsigned int>(Nk, 0));
     auto &spidToGid = _spidToGid[k];
     auto &gidToSpid = _geneCells[k]->gidToSpid;
     spidToGid.resize(_N);
@@ -52,7 +53,7 @@ StepwiseAsteroid::StepwiseAsteroid(const StringToUint &speciesToSpid,
   
 
 
-double getAsteroidScore(const DistanceMatrix &speciesMatrix,
+double getAsteroidScore(const MatrixUint &speciesMatrix,
     const GeneCell *geneCell,
     const BitVector &addedSpids) // the spids that belong to the tree being built
 {
@@ -61,7 +62,6 @@ double getAsteroidScore(const DistanceMatrix &speciesMatrix,
     return score;
   }
   const auto &geneMatrix = geneCell->distanceMatrix;
-  //std::cerr << geneMatrix.size() << " " << speciesMatrix.size() << std::endl;
   const auto &gidToSpid = geneCell->gidToSpid;
   for (unsigned int gid1 = 0; gid1 < geneMatrix.size(); ++gid1) {
     auto spid1 = gidToSpid[gid1];
@@ -74,7 +74,7 @@ double getAsteroidScore(const DistanceMatrix &speciesMatrix,
         continue; 
       }
       double d = geneMatrix[gid1][gid2];
-      double m = speciesMatrix[gid1][gid2];
+      auto m = speciesMatrix[gid1][gid2];
       score += d * pow(0.5, m);
     }
   }
@@ -87,9 +87,9 @@ double getAsteroidScore(const DistanceMatrix &speciesMatrix,
  */
 void updateDistanceMatrixAux(unsigned int gid,
     Node *node,
-    double  distance,
+    unsigned int distance,
     std::vector<unsigned int> &spidToGid,
-    DistanceMatrix &distanceMatrix,
+    MatrixUint &distanceMatrix,
     std::set<unsigned int> &subgids)
 {
   if (!node->next) {
@@ -101,8 +101,8 @@ void updateDistanceMatrixAux(unsigned int gid,
   }
   auto left = node->next->back;
   auto right = node->next->next->back;
-  updateDistanceMatrixAux(gid, left, distance + 1.0, spidToGid, distanceMatrix, subgids);
-  updateDistanceMatrixAux(gid, right, distance + 1.0, spidToGid, distanceMatrix, subgids);
+  updateDistanceMatrixAux(gid, left, distance + 1, spidToGid, distanceMatrix, subgids);
+  updateDistanceMatrixAux(gid, right, distance + 1, spidToGid, distanceMatrix, subgids);
 }
     
 
@@ -115,13 +115,13 @@ void printMatrix(const DistanceMatrix &m) {
   }
 }
 
-DistanceMatrix getUpdatedDistanceMatrix(unsigned int gid,
+static MatrixUint getUpdatedDistanceMatrix(unsigned int gid,
     Node *insertionBranch,
     std::vector<unsigned int> &spidToGid,
-    const DistanceMatrix &speciesMatrix
+    const MatrixUint &speciesMatrix
     )
 {
-  DistanceMatrix res(speciesMatrix);
+  MatrixUint res(speciesMatrix);
   if (!insertionBranch || !insertionBranch->back) {
     // edge case:
     // this is the second inserted taxa
@@ -133,13 +133,13 @@ DistanceMatrix getUpdatedDistanceMatrix(unsigned int gid,
   std::set<unsigned int> leftGids;
   std::set<unsigned int> rightGids;
   // update distances between spid and the other nodes
-  updateDistanceMatrixAux(gid, leftSubtree, 1.0, spidToGid, res, leftGids);
-  updateDistanceMatrixAux(gid, rightSubtree, 1.0, spidToGid, res, rightGids);
+  updateDistanceMatrixAux(gid, leftSubtree, 1, spidToGid, res, leftGids);
+  updateDistanceMatrixAux(gid, rightSubtree, 1, spidToGid, res, rightGids);
   // update the distances between all the other nodes after adding spid
   for (auto gid1: leftGids) {
     for (auto gid2: rightGids) {
-      res[gid1][gid2] += 1.0;
-      res[gid2][gid1] += 1.0;
+      res[gid1][gid2] += 1;
+      res[gid2][gid1] += 1;
     }
   }
   return res;
@@ -200,12 +200,11 @@ void computeDiff(Node *currentInsertionNode,
 Node *findBestInsertionBranch(unsigned int spid, // of the taxa to add
     StepwiseTree &tree,
     InducedStepwiseTrees &inducedTrees,
-    std::vector<DistanceMatrix> &speciesMatrices,
+    std::vector<MatrixUint> &speciesMatrices,
     const std::vector<GeneCell *> &geneCells,
     UIntMatrix &spidToGid,
     std::vector<IntPairToDouble> &deltas,
-    MatrixDouble &phis,
-    const BitVector &addedSpids) // the spids that belong to the tree being built
+    MatrixDouble &phis)
   
 {
   Logger::info << "find best insertion " << spid << std::endl;
@@ -213,8 +212,6 @@ Node *findBestInsertionBranch(unsigned int spid, // of the taxa to add
   Node *bestBranch = nullptr;
   std::vector<double> perSuperBranchScore(tree.getAllNodes().size(), 0.0);
 
-#define FAST
-#ifdef FAST  
   for (unsigned int k = 0; k < geneCells.size(); ++k) {
     auto &inducedSpeciesTree = *inducedTrees[k];
     auto Nk = geneCells[k]->coverage.count();
@@ -239,51 +236,9 @@ Node *findBestInsertionBranch(unsigned int spid, // of the taxa to add
       }
     }
   }
-#else
-  for (unsigned int k = 0; k < geneCells.size(); ++k) {
-    auto &inducedSpeciesTree = *inducedTrees[k];
-    auto &inducedSpeciesTreeMatrix = speciesMatrices[k];
-    if (inducedSpeciesTree.getWrappedTree().getBranches().size() <= 2) {
-      continue;
-    }
-    auto Nk = geneCells[k]->coverage.count();
-    std::vector<double> diffVector(Nk * 4 - 6, 0.0);
-    computeDiff(inducedSpeciesTree.getWrappedTree().getAnyLeaf()->back,
-      0.0,
-      nullptr,
-      deltas[k],
-      diffVector, 
-      phis[k]);
-    unsigned int plop = 0;
-    for (auto inducedBranch: inducedSpeciesTree.getWrappedTree().getBranches()) {
-      DistanceMatrix newSpeciesMatrix; 
-      if (geneCells[k]->coverage[spid]) {
-        newSpeciesMatrix = getUpdatedDistanceMatrix(spidToGid[k][spid],
-            inducedBranch,
-            spidToGid[k],         
-            inducedSpeciesTreeMatrix);
-      } else {
-        newSpeciesMatrix = inducedSpeciesTreeMatrix;
-      }
-      auto score = getAsteroidScore(newSpeciesMatrix,
-          geneCells[k],
-          addedSpids);
-      if (k < 3 && plop++ < 3) {
-        auto diffValue = diffVector[inducedBranch->index];
-        std::cout << score << " " << diffValue << " " << score - diffValue << std::endl;
-      }
-      //std::cout << "DIFF=" << firstScore - score << std::endl;
-      for (auto superBranch: inducedSpeciesTree.getSuperBranches(inducedBranch)) {
-        perSuperBranchScore[superBranch->index] += score;       
-        perSuperBranchScore[superBranch->back->index] += score;       
-      }
-    }
-  }
-#endif
   for (auto branch: tree.getBranches()) {
     auto score = perSuperBranchScore[branch->index];
     ParallelContext::sumDouble(score);
-    //std::cout << score << std::endl;
     if (score < bestScore) {
       bestScore = score;
       bestBranch = branch;
@@ -303,7 +258,6 @@ Node *findBestInsertionBranch(unsigned int spid, // of the taxa to add
         inducedBranch,
         spidToGid[k],
         inducedSpeciesTreeMatrix);
-  
   } 
 
   Logger::info << "Best score: " << bestScore << std::endl;
@@ -325,7 +279,7 @@ void getSubClade(Node * node,
 double StepwiseAsteroid::_computeDelta(std::set<Node *>&s1,
     std::set<Node *>s2,
     const DistanceMatrix &geneMatrix,
-    const DistanceMatrix &speciesMatrix,
+    const MatrixUint &speciesMatrix,
     const std::vector<unsigned int> &spidToGid)
 {
   double delta = 0.0;
@@ -344,19 +298,28 @@ double StepwiseAsteroid::_getPhi(unsigned int gid,
     Node *node,
     const DistanceMatrix &geneMatrix,
     const std::vector<unsigned int> &spidToGid,
-    double depth)
+    unsigned int depth)
 {
   if (!node->next) {
     auto gid2 = spidToGid[node->spid];
     return geneMatrix[gid][gid2] * _pows[depth];
   } else {
     double res = 0.0;
-    res += _getPhi(gid, node->next->back, geneMatrix, spidToGid, depth + 1.0);
-    res += _getPhi(gid, node->next->next->back, geneMatrix, spidToGid, depth + 1.0);
+    res += _getPhi(gid, 
+        node->next->back, 
+        geneMatrix, 
+        spidToGid, 
+        depth + 1);
+    res += _getPhi(gid, 
+        node->next->next->back, 
+        geneMatrix, 
+        spidToGid, 
+        depth + 1);
     return res;
   }
 }
 
+/*
 void fillDeltaForAddedTaxon(Node *node,
     unsigned int taxonGid,
     const DistanceMatrix &geneDistances,
@@ -365,7 +328,7 @@ void fillDeltaForAddedTaxon(Node *node,
   if (!node->next) {
   }
 }
-
+*/
 
 void StepwiseAsteroid::_updatePhis(unsigned int spid)
 {
@@ -376,7 +339,7 @@ void StepwiseAsteroid::_updatePhis(unsigned int spid)
           node, 
           _geneCells[k]->distanceMatrix,
           _spidToGid[k],
-          0.0);
+          0);
     }
   }
 }
@@ -431,8 +394,7 @@ void StepwiseAsteroid::insertLabel(const std::string &label)
       _geneCells,
       _spidToGid,
       _slowDeltas,
-      _phis,
-      _insertedSpecies);
+      _phis);
   _tree.addLeaf(spid, bestBranch);
 }
 

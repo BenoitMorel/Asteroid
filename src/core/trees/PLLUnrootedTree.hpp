@@ -171,17 +171,6 @@ public:
       bool leavesOnly = true);
 
 
-  /**
-   *  replace pu and pv by one of their three possible next pointers
-   *  such that their back pointers point to each other
-   *  In addition, fill branchesPath with the sequence of BRANCHES
-   *  along the path (if node1->back == node2, we only add one of the two)
-   */
-  static void orientTowardEachOther(corax_unode_t **pu, 
-      corax_unode_t **pv,
-      std::vector<corax_unode_t *> &branchesPath);
-
-
   // TODO: DOCUMENT
   std::vector<double> getMADRelativeDeviations();
 

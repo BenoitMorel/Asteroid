@@ -9,8 +9,8 @@
 int main(int, char **)
 {
   Random::setSeed(42);
-  auto ITERATIONS = 1;
-  auto LABELS = 100;
+  unsigned int ITERATIONS = 1;
+  unsigned int LABELS = 100;
   for (unsigned int iter = 0; iter < ITERATIONS; ++iter) {
     std::cout << "NEW ITERATION " << iter << std::endl;
     std::vector<std::string> labels;

@@ -136,7 +136,7 @@ void fillGidToSpid(std::vector<GeneCell> &geneCells,
 }
 
 void computeGeneDistances(const Arguments &arg,
-    std::vector<GeneCell *> &geneCells)
+    const std::vector<GeneCell *> &geneCells)
 {
   Logger::timed << "Computing internode distances from the gene trees..." << std::endl;
   IDParam idParams;
@@ -310,7 +310,6 @@ double optimize(PLLUnrootedTree &speciesTree,
     bool noCorrection,
     bool verbose)
 {
-  std::vector<GeneCell *> compressedCells;
   std::vector<DistanceMatrix> distanceMatrices;
   std::vector<BitVector> coverages;
   UIntMatrix gidToSpid;
@@ -338,7 +337,7 @@ double optimize(PLLUnrootedTree &speciesTree,
 }
 
 
-ScoredTrees search(SpeciesTrees &startingSpeciesTrees,
+ScoredTrees search(const SpeciesTrees &startingSpeciesTrees,
   const std::vector<GeneCell *> &geneCells,
   const std::vector<unsigned int> &weights,
   bool noCorrection,
@@ -472,10 +471,6 @@ int main(int argc, char * argv[])
   GeneSpeciesMapping mappings;
   // map species labels to species spid
   StringToUint speciesToSpid;
-  // per-family distance matrices
-  std::vector<DistanceMatrix> distanceMatrices;
-  // per family species coverage
-  std::vector<BitVector> perFamilyCoverage;
    
   UIntMatrix gidToSpid;
 
@@ -503,9 +498,7 @@ int main(int argc, char * argv[])
   std::vector<GeneCell *> geneCells;
   std::vector<GeneCell *> perCoreGeneCells;
   for (auto it: cellMap) {
-    for (auto cell: it.second) {
-      geneCells.push_back(cell);
-    }
+    geneCells.insert(geneCells.end(), it.second.begin(), it.second.end());
   }
   getPerCoreGeneCells(geneCells, perCoreGeneCells);
   computeGeneDistances(arg, perCoreGeneCells);

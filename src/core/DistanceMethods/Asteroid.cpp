@@ -16,12 +16,6 @@ static corax_unode_t *getOtherNext(corax_unode_t *n1,
   }
 }
 
-static DistanceMatrix getNullMatrix(size_t N,
-    double value = 0.0)
-{
-  std::vector<double> nullDistances(N, value);
-  return DistanceMatrix(N, nullDistances); 
-}
 static UIntMatrix getNullMatrixUInt(size_t N,
     unsigned int value = 0)
 {

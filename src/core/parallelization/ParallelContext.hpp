@@ -128,17 +128,15 @@ private:
   class ParallelException: public std::exception
   {
   public:
-    ParallelException(int errorCode) 
+    ParallelException(int errorCode):
+      msg_("Program failed with error " + std::to_string(errorCode))
+
     {
-      msg_ = "Program failed with error " + std::to_string(errorCode);
     }
     
-    virtual ~ParallelException() {}
+    virtual ~ParallelException() noexcept override {}
 
-    virtual const char* what() const noexcept
-    {
-      return msg_.c_str();
-    }
+    virtual const char* what() const noexcept override;
   private:
     std::string msg_;
   };

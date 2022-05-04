@@ -30,6 +30,5 @@ endmacro()
 
 add_subdirectory(asteroid)
 add_subdirectory(test)
-#add_subdirectory(bipstep)
 
 

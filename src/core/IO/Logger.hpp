@@ -37,6 +37,7 @@ private:
 
 
 public:
+  virtual ~Logger();
   static void init();
   static void close();
 

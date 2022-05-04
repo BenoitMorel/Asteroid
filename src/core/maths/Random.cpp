@@ -1,16 +1,14 @@
 #include "Random.hpp"
 
-std::mt19937_64 Random::_rng;
-std::uniform_int_distribution<int> Random::_unii(0);
-std::uniform_real_distribution<double> Random::_uniproba;
+Random::Distributions Random::_d;
 
 void Random::setSeed(unsigned int seed)
 {
-  _rng.seed(seed);
+  _d._rng.seed(seed);
 }
 int Random::getInt() 
 {
-  return _unii(_rng);
+  return _d._unii(_d._rng);
 }
 
 int Random::getInt(int max)
@@ -20,7 +18,7 @@ int Random::getInt(int max)
 
 double Random::getProba() 
 {
-  return _uniproba(_rng);
+  return _d._uniproba(_d._rng);
 }
 
 
