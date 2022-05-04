@@ -57,7 +57,7 @@ public:
   }
 
   static void enableLogFile(bool enable) {
-    logFile = enable ? saveLogFile : 0;
+    logFile = enable ? saveLogFile : nullptr;
   }
 
   static long getElapsedSec() {

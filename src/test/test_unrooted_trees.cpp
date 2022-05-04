@@ -2,7 +2,7 @@
 #include <trees/PLLUnrootedTree.hpp>
 #include <set>
 
-void testParser() 
+static void testParser() 
 {
   std::vector<std::string> newicks;
   // binary tree
@@ -22,7 +22,7 @@ void testParser()
   }
 }
 
-void testIsomorphic()
+static void testIsomorphic()
 {
   PLLUnrootedTree tree1_1("((a,b),(c,d),(e,f));", false);
   PLLUnrootedTree tree1_2("((e,f),(d,c), (b,a));", false);
@@ -37,7 +37,7 @@ void testIsomorphic()
 }
 
 
-void testInducedTree()
+static void testInducedTree()
 {
   std::cout << "Test induced trees..." << std::endl;
   PLLUnrootedTree tree1("((a,b),(c,d),(e,f));", false);

@@ -2,7 +2,7 @@
 #include <trees/PLLUnrootedTree.hpp>
 #include <IO/Logger.hpp>
 
-void computeFromGeneTreeAux(corax_unode_t *node,
+static void computeFromGeneTreeAux(corax_unode_t *node,
     const IDParam &params,
     double d,
     std::vector<double> &distances)
@@ -40,7 +40,7 @@ void InternodeDistance::computeFromGeneTree(PLLUnrootedTree &geneTree,
 }
 
 
-void computeFromSpeciesTreeAux(corax_unode_t *node,
+static void computeFromSpeciesTreeAux(corax_unode_t *node,
     unsigned int d,
     std::vector<unsigned int> &distances)
 {

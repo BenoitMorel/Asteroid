@@ -45,7 +45,10 @@ void SplitHashtable::addTree(PLLUnrootedTree &tree)
 }
 
 static char* intToString(unsigned int num) { 
-  auto size = (num == 0 ? 2 : static_cast<size_t>(log10(static_cast<float>(num))) + 1.0); 
+  size_t size = 2;
+  if (num > 0) {
+    size = 1 + static_cast<size_t>(log10(static_cast<double>(num)));
+  }
   auto str = static_cast<char*>(malloc(size*sizeof(char)));
   sprintf(str, "%u",num); 
   return str;

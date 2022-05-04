@@ -46,7 +46,7 @@ void InducedStepwiseTree::unmapGhostNode(Node *superNode)
   _inducedToSuperGhost[inducedBranch->back->index].erase(superNode);
 }
 
-bool findSuperLCAs(Node *node, 
+static bool findSuperLCAs(Node *node, 
         Node *superBound2,
         Node *superBound3,
         bool &superBound2IsInSubtree,

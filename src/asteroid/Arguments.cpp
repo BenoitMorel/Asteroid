@@ -26,15 +26,15 @@ Arguments::Arguments(int argc, char * argv[]):
     } else if (arg == "-i" || arg == "--input-gene-trees") {
       inputGeneTreeFile = std::string(argv[++i]);
     } else if (arg == "-r" || arg == "--random-starting-trees") {
-      randomStartingTrees = atoi(argv[++i]);
+      randomStartingTrees = static_cast<unsigned int>(atoi(argv[++i]));
     } else if (arg == "-b" || arg == "--bs-trees") {
-      bootstrapTrees = atoi(argv[++i]);
+      bootstrapTrees = static_cast<unsigned int>(atoi(argv[++i]));
     } else if (arg == "-p" || arg == "--prefix") {
       prefix = std::string(argv[++i]);
     } else if (arg == "-m" || arg == "--gene-species-mapping") {
       geneSpeciesMapping = std::string(argv[++i]);
     } else if (arg == "--seed") {
-      seed = atoi(argv[++i]);
+      seed = static_cast<unsigned int>(atoi(argv[++i]));
     } else if (arg == "-n" || arg == "--no-correction") {
       noCorrection = true;
     } else if (arg == "--min-bl") {

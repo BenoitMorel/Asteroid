@@ -4,7 +4,7 @@
 #include <set>
 
 
-void testCount()
+static void testCount()
 {
   std::cout << "Testing bitvector count function..." << std::endl;
   unsigned int size = 50;
@@ -22,7 +22,7 @@ void testCount()
 }
 
 
-void testSetOperations()
+static void testSetOperations()
 {
   std::cout << "Testing bitvector set operations..." << std::endl;
   unsigned int size = 50;
@@ -48,7 +48,7 @@ void testSetOperations()
 }
 
 
-void testHashtable()
+static void testHashtable()
 {
   std::cout << "Testing bitvector hashtable" << std::endl;
   std::vector<BitVector> vec;

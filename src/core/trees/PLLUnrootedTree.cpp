@@ -23,7 +23,7 @@ static void destroyNodeData(void *)
 {
 }
 
-void utreeDestroy(corax_utree_t *utree) {
+static void utreeDestroy(corax_utree_t *utree) {
   if(!utree)
     return;
   corax_utree_destroy(utree, destroyNodeData);
@@ -341,7 +341,7 @@ std::vector<corax_unode_t*> PLLUnrootedTree::getReverseDepthNodes() const
     if (!back->next) {
       continue;
     }
-    auto left = back->next;;
+    auto left = back->next;
     auto right = back->next->next;
     if (!marked[left->node_index]) {
       q.push_back(left);
@@ -674,8 +674,8 @@ bool PLLUnrootedTree::areIsomorphic(const PLLUnrootedTree &t1,
   }
   auto startingLeaf1 = findMinimumHashLeaf(t1.getAnyInnerNode())->back;
   auto startingLeaf2 = findMinimumHashLeaf(t2.getAnyInnerNode())->back;
-  std::vector<bool> leftFirst1(t1.getDirectedNodesNumber(), true);;
-  std::vector<bool> leftFirst2(t2.getDirectedNodesNumber(), true);;
+  std::vector<bool> leftFirst1(t1.getDirectedNodesNumber(), true);
+  std::vector<bool> leftFirst2(t2.getDirectedNodesNumber(), true);
   orderChildren(startingLeaf1, leftFirst1);
   orderChildren(startingLeaf2, leftFirst2);
   return areIsomorphicAux(startingLeaf1, 
@@ -832,7 +832,7 @@ std::shared_ptr<PLLUnrootedTree> PLLUnrootedTree::getInducedTree(const BitVector
   return getInducedTree(v);
 }
 
-void fillWithChildren(corax_unode_t *super, 
+static void fillWithChildren(corax_unode_t *super, 
     corax_unode_t *induced,
     std::vector<corax_unode_t *> &superToInducedRegraft)
 {
@@ -844,7 +844,7 @@ void fillWithChildren(corax_unode_t *super,
 }
 
 // has to be called in post order (wrt the super tree) traversal
-void mapNodesWithInducedTreeAux(corax_unode_t *superNode,
+static void mapNodesWithInducedTreeAux(corax_unode_t *superNode,
     const LabelToLeaf &inducedLabelToLeaf,  
     NodeVector &superToInduced,
     NodeVector &superToInducedRegraft)

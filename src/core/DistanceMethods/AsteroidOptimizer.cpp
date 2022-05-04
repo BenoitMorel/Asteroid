@@ -25,7 +25,7 @@ static bool sprYeldsSameTree(corax_unode_t *p, corax_unode_t *r)
     || (r == p->back) || (r == p->next->back) || (r == p->next->next->back);
 }
 
-bool isSPRMoveValid(PLLUnrootedTree &tree,
+static bool isSPRMoveValid(PLLUnrootedTree &tree,
     corax_unode_t *prune, 
     corax_unode_t *regraft)
 {
@@ -44,7 +44,7 @@ bool isSPRMoveValid(PLLUnrootedTree &tree,
 
 
 
-bool isInScores(const std::vector<double> &scores, double score)
+static bool isInScores(const std::vector<double> &scores, double score)
 {
   const double EPSILON_SCORE = 0.000001;
   return std::any_of(scores.begin(),
@@ -53,7 +53,7 @@ bool isInScores(const std::vector<double> &scores, double score)
       );
 }
 
-void addInvolvedNode(corax_unode_t *node, 
+static void addInvolvedNode(corax_unode_t *node, 
     std::unordered_set<corax_unode_t *> &involved)
 {
   involved.insert(node);
@@ -63,7 +63,7 @@ void addInvolvedNode(corax_unode_t *node,
   }
 }
 
-bool wasInvolved(corax_unode_t *node,
+static bool wasInvolved(corax_unode_t *node,
     std::unordered_set<corax_unode_t *> &involved)
 {
   return involved.find(node) != involved.end();

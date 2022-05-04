@@ -22,7 +22,7 @@
 /**
  *  Read all trees from inputGeneTreeFile
  */
-void parseTrees(const std::string &inputGeneTreeFile,
+static void parseTrees(const std::string &inputGeneTreeFile,
     GeneTrees &geneTrees)
 {
   // Read all trees
@@ -52,9 +52,9 @@ static DistanceMatrix initDistancetMatrix(unsigned int N,
 /**
  *  Initialize the program state
  */
-void init(Arguments &arg)
+static void init(Arguments &arg)
 {
-  ParallelContext::init(0);
+  ParallelContext::init(nullptr);
   Logger::init();
   Logger::timed << "Starting Asteroid..." << std::endl;
   arg.printCommand();
@@ -65,13 +65,13 @@ void init(Arguments &arg)
 /**
  *  Closes the program state
  */
-void close()
+static void close()
 {
   Logger::close();
   ParallelContext::finalize();
 }
 
-void readGeneTrees(const std::string &inputGeneTreeFile,
+static void readGeneTrees(const std::string &inputGeneTreeFile,
     GeneTrees &geneTrees)
 {
   Logger::timed << "Parsing gene trees..." << std::endl;
@@ -87,7 +87,7 @@ void readGeneTrees(const std::string &inputGeneTreeFile,
  *  them a SPID
  *
  */
-void extractMappings(const Arguments &arg,
+static void extractMappings(const Arguments &arg,
     const GeneTrees &geneTrees,
     GeneSpeciesMapping &mappings,
     StringToUint &speciesToSpid)
@@ -115,7 +115,7 @@ void extractMappings(const Arguments &arg,
  *  and species leaves). The gid is 
  *  also stored in the data field of the gene leaves
  */
-void fillGidToSpid(std::vector<GeneCell> &geneCells,
+static void fillGidToSpid(std::vector<GeneCell> &geneCells,
     GeneSpeciesMapping &mappings,
     StringToUint &speciesToSpid)
 {
@@ -136,7 +136,7 @@ void fillGidToSpid(std::vector<GeneCell> &geneCells,
   }
 }
 
-void computeGeneDistances(const Arguments &arg,
+static void computeGeneDistances(const Arguments &arg,
     const std::vector<GeneCell *> &geneCells)
 {
   Logger::timed << "Computing internode distances from the gene trees..." << std::endl;
@@ -157,7 +157,7 @@ void computeGeneDistances(const Arguments &arg,
 /**
  *  Compute the coverage pattern of each gene tree
  */
-void computeFamilyCoverage(
+static void computeFamilyCoverage(
     std::vector<GeneCell> &geneCells,
     unsigned int speciesNumber)
 {
@@ -167,7 +167,7 @@ void computeFamilyCoverage(
   for (auto &geneCell: geneCells) {
     geneCell.coverage = BitVector(speciesNumber, false);
     for (auto geneLeaf: geneCell.geneTree->getLeaves()) {
-      auto gid = reinterpret_cast<intptr_t>(geneLeaf->data);
+      auto gid = static_cast<unsigned int>(reinterpret_cast<intptr_t>(geneLeaf->data));
       auto spid = geneCell.gidToSpid[gid];
       if (!geneCell.coverage[spid]) {
         total++;
@@ -185,18 +185,18 @@ void computeFamilyCoverage(
     << std::endl;
 }
 
-std::vector<unsigned int> getPerCoreUniformSampling(unsigned int K)
+static std::vector<unsigned int> getPerCoreUniformSampling(unsigned int K)
 {
   auto begin = ParallelContext::getBegin(K);
   auto end = ParallelContext::getEnd(K);
   return std::vector<unsigned int>(end - begin, 1);
 }
 
-std::vector<unsigned int> getPerCoreBSSampling(unsigned int K) 
+static std::vector<unsigned int> getPerCoreBSSampling(unsigned int K) 
 {
   std::vector<unsigned int> sampling(K, 0);
   for (unsigned int i = 0; i < K; ++i) {
-    sampling[Random::getInt(K)]++;
+    sampling[Random::getUInt(K)]++;
   }
   std::vector<unsigned int> perCoreSampling;
   auto begin = ParallelContext::getBegin(K);
@@ -212,10 +212,10 @@ std::vector<unsigned int> getPerCoreBSSampling(unsigned int K)
  *  Assign to each MPI rank a subset of the gene 
  *  trees in order to parallelize computations
  */
-void getPerCoreGeneCells(std::vector<GeneCell *> &geneCells,
+static void getPerCoreGeneCells(std::vector<GeneCell *> &geneCells,
     std::vector<GeneCell *> &perCoreGeneCells)
 {
-  auto K = geneCells.size();
+  auto K = static_cast<unsigned int>(geneCells.size());
   auto begin = ParallelContext::getBegin(K);
   auto end = ParallelContext::getEnd(K);
   perCoreGeneCells.clear();
@@ -224,7 +224,7 @@ void getPerCoreGeneCells(std::vector<GeneCell *> &geneCells,
   }
 }
     
-void getDataNoCorrection(const std::vector<GeneCell *> &geneCells,
+static void getDataNoCorrection(const std::vector<GeneCell *> &geneCells,
         const std::vector<unsigned int> &weights,
         std::vector<DistanceMatrix> &distanceMatrices,
         std::vector<BitVector> &coverages,
@@ -271,7 +271,7 @@ void getDataNoCorrection(const std::vector<GeneCell *> &geneCells,
   }
 }
 
-void getDataWithCorrection(const std::vector<GeneCell *> &geneCells,
+static void getDataWithCorrection(const std::vector<GeneCell *> &geneCells,
         const std::vector<unsigned int> &weights,
         std::vector<DistanceMatrix> &distanceMatrices,
         std::vector<BitVector> &coverages,
@@ -305,7 +305,7 @@ void getDataWithCorrection(const std::vector<GeneCell *> &geneCells,
   }
 }
 
-double optimize(PLLUnrootedTree &speciesTree,
+static double optimize(PLLUnrootedTree &speciesTree,
     const std::vector<GeneCell *>  &geneCells,
     const std::vector<unsigned int> &weights,
     bool noCorrection,
@@ -338,7 +338,7 @@ double optimize(PLLUnrootedTree &speciesTree,
 }
 
 
-ScoredTrees search(const SpeciesTrees &startingSpeciesTrees,
+static ScoredTrees search(const SpeciesTrees &startingSpeciesTrees,
   const std::vector<GeneCell *> &geneCells,
   const std::vector<unsigned int> &weights,
   bool noCorrection,
@@ -363,7 +363,7 @@ ScoredTrees search(const SpeciesTrees &startingSpeciesTrees,
   return scoredTrees;
 }
 
-TreePtr generateRandomSpeciesTree(std::unordered_set<std::string> &labels,
+static TreePtr generateRandomSpeciesTree(std::unordered_set<std::string> &labels,
   const StringToUint &speciesToSpid)
 {
   auto speciesTree = std::make_shared<PLLUnrootedTree>(
@@ -376,7 +376,7 @@ TreePtr generateRandomSpeciesTree(std::unordered_set<std::string> &labels,
   return speciesTree;
 }
   
-Trees generateRandomSpeciesTrees(std::unordered_set<std::string> &labels,
+static Trees generateRandomSpeciesTrees(std::unordered_set<std::string> &labels,
     const StringToUint &speciesToSpid,
     unsigned int number)
 {
@@ -389,7 +389,7 @@ Trees generateRandomSpeciesTrees(std::unordered_set<std::string> &labels,
   return trees;
 }
 
-void reorderTaxa(std::vector<std::string> &taxa,
+static void reorderTaxa(std::vector<std::string> &taxa,
     const std::vector<GeneCell *> &geneCells,
     const StringToUint &speciesToSpid,
     bool random)
@@ -398,9 +398,9 @@ void reorderTaxa(std::vector<std::string> &taxa,
     std::shuffle(taxa.begin(), taxa.end(), Random::getRNG());
     return;
   }
-  unsigned int taxonNumber = taxa.size();
+  auto taxonNumber = taxa.size();
   std::unordered_set<std::string> remainingTaxa(taxa.begin(), taxa.end());
-  auto firstTaxon = taxa[Random::getInt(taxa.size())]; 
+  auto firstTaxon = taxa[Random::getUInt(static_cast<unsigned int>(taxa.size()))]; 
   taxa.clear();
   BitVector mask(taxonNumber, false);
  
@@ -441,7 +441,7 @@ void reorderTaxa(std::vector<std::string> &taxa,
   }
 }
 
-void generateStepwiseTree(const StringToUint &speciesToSpid,
+static void generateStepwiseTree(const StringToUint &speciesToSpid,
     const std::vector<GeneCell *> &geneCells,
     const std::string &outputTree)
 {
@@ -478,7 +478,7 @@ int main(int argc, char * argv[])
   init(arg);
   readGeneTrees(arg.inputGeneTreeFile, geneTrees);
   extractMappings(arg, geneTrees, mappings, speciesToSpid); 
-  unsigned int speciesNumber = mappings.getCoveredSpecies().size();
+  auto speciesNumber = static_cast<unsigned int>(mappings.getCoveredSpecies().size());
   auto speciesLabels = mappings.getCoveredSpecies();
  
 
@@ -486,7 +486,7 @@ int main(int argc, char * argv[])
   for (auto geneTree: geneTrees) {
     allGeneCells.push_back(GeneCell(geneTree));
   }
-  unsigned int K = allGeneCells.size();
+  auto K = static_cast<unsigned int>(allGeneCells.size());
   fillGidToSpid(allGeneCells, mappings, speciesToSpid);
   computeFamilyCoverage(allGeneCells, speciesNumber);
   std::unordered_map<BitVector, std::vector<GeneCell *> > cellMap;

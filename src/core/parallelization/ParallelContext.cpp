@@ -24,7 +24,7 @@ void ParallelContext::init(void *commPtr)
     setOwnMPIContext(false);
   } else {
     _mpiEnabled = true;
-    MPI_Init(0, 0);
+    MPI_Init(nullptr, nullptr);
     setComm(MPI_COMM_WORLD);
     setOwnMPIContext(true);
     if (getSize() == 1) {
@@ -63,7 +63,10 @@ void ParallelContext::pushSequentialContext()
   }
 #ifdef WITH_MPI
   MPI_Comm newComm;
-  MPI_Comm_split(getComm(), getRank(), getRank(), &newComm);
+  MPI_Comm_split(getComm(), 
+      static_cast<int>(getRank()), 
+      static_cast<int>(getRank()), 
+      &newComm);
   _commStack.push(newComm);
   _ownsMPIContextStack.push(_ownsMPIContextStack.top());
 #endif
@@ -316,18 +319,18 @@ void ParallelContext::concatenateHetherogeneousDoubleVectors(
     return;
   }
 #ifdef WITH_MPI
-  std::vector<int> vectorSizes(static_cast<int>(getSize()));
-  allGatherInt(localVector.size(), vectorSizes);
-  auto totalSize = std::accumulate(vectorSizes.begin(), 
+  std::vector<int> vectorSizes(getSize());
+  allGatherInt(static_cast<int>(localVector.size()), vectorSizes);
+  auto totalSize = static_cast<unsigned int>(std::accumulate(vectorSizes.begin(), 
       vectorSizes.end(),
-      0);
+      0));
   globalVector.resize(totalSize);
   std::vector<int> displ(totalSize);
-  for (int i = 1; i < totalSize; ++i) {
+  for (unsigned int i = 1; i < totalSize; ++i) {
     displ[i] = displ[i-1] + vectorSizes[i-1];
   }
   MPI_Gatherv(&localVector[0],  // send buffer 
-      localVector.size(),       // send count
+      static_cast<int>(localVector.size()),       // send count
       MPI_DOUBLE,              // send type
       &globalVector[0],         // receive buffer 
       &vectorSizes[0],          // receive counts
@@ -349,18 +352,18 @@ void ParallelContext::concatenateHetherogeneousUIntVectors(
     return;
   }
 #ifdef WITH_MPI
-  std::vector<int> vectorSizes(static_cast<int>(getSize()));
-  allGatherInt(localVector.size(), vectorSizes);
-  auto totalSize = std::accumulate(vectorSizes.begin(), 
+  std::vector<int> vectorSizes(static_cast<unsigned int>(getSize()));
+  allGatherInt(static_cast<int>(localVector.size()), vectorSizes);
+  auto totalSize = static_cast<unsigned int>(std::accumulate(vectorSizes.begin(), 
       vectorSizes.end(),
-      0);
+      0));
   globalVector.resize(totalSize);
   std::vector<int> displ(totalSize);
-  for (int i = 1; i < totalSize; ++i) {
+  for (unsigned int i = 1; i < totalSize; ++i) {
     displ[i] = displ[i-1] + vectorSizes[i-1];
   }
   MPI_Allgatherv(&localVector[0],  // send buffer 
-      localVector.size(),       // send count
+      static_cast<int>(localVector.size()),       // send count
       MPI_UNSIGNED,              // send type
       &globalVector[0],         // receive buffer 
       &vectorSizes[0],          // receive counts
@@ -490,7 +493,7 @@ void ParallelContext::makeRandConsistent()
 {
   auto seed = Random::getInt();
   ParallelContext::broadcastInt(0, seed);
-  Random::setSeed(seed);
+  Random::setSeed(static_cast<unsigned int>(seed));
   assert(isRandConsistent());
 }
 

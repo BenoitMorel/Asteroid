@@ -5,7 +5,7 @@
 #include <map>
 #include <vector>
 
-void test_internode()
+static void test_internode()
 {
   std::cout << "Testing internode distance" << std::endl;
   PLLUnrootedTree tree("((a:1.0,b:1.0):1.0,(c:1.0,d:1.0):1.0,e:10.0);", false);

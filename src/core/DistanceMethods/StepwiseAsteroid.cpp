@@ -53,7 +53,8 @@ StepwiseAsteroid::StepwiseAsteroid(const StringToUint &speciesToSpid,
   
 
 
-double getAsteroidScore(const MatrixUint &speciesMatrix,
+/*
+static double getAsteroidScore(const MatrixUint &speciesMatrix,
     const GeneCell *geneCell,
     const BitVector &addedSpids) // the spids that belong to the tree being built
 {
@@ -80,12 +81,13 @@ double getAsteroidScore(const MatrixUint &speciesMatrix,
   }
   return score / 2.0;
 }
+*/
 
 /**
  *  Compute the internode distance bitween spid and the leaves under node
  *  Also fill subgids with the gid of the leaves under node
  */
-void updateDistanceMatrixAux(unsigned int gid,
+static void updateDistanceMatrixAux(unsigned int gid,
     Node *node,
     unsigned int distance,
     std::vector<unsigned int> &spidToGid,
@@ -106,7 +108,8 @@ void updateDistanceMatrixAux(unsigned int gid,
 }
     
 
-void printMatrix(const DistanceMatrix &m) {
+/*
+static void printMatrix(const DistanceMatrix &m) {
   for (const auto &v: m) {
     for (const auto val: v) {
       Logger::info << val << " ";
@@ -114,6 +117,7 @@ void printMatrix(const DistanceMatrix &m) {
     Logger::info << std::endl;
   }
 }
+*/
 
 static MatrixUint getUpdatedDistanceMatrix(unsigned int gid,
     Node *insertionBranch,
@@ -147,7 +151,7 @@ static MatrixUint getUpdatedDistanceMatrix(unsigned int gid,
 
 
 
-void computeDiff(Node *currentInsertionNode,
+static void computeDiff(Node *currentInsertionNode,
     double lastDiff,
     Node *lastInsertionNode,
     const IntPairToDouble &deltas,
@@ -197,7 +201,7 @@ void computeDiff(Node *currentInsertionNode,
 }
 
 
-Node *findBestInsertionBranch(unsigned int spid, // of the taxa to add
+static Node *findBestInsertionBranch(unsigned int spid, // of the taxa to add
     StepwiseTree &tree,
     InducedStepwiseTrees &inducedTrees,
     std::vector<MatrixUint> &speciesMatrices,
@@ -265,7 +269,7 @@ Node *findBestInsertionBranch(unsigned int spid, // of the taxa to add
 
 }
 
-void getSubClade(Node * node,
+static void getSubClade(Node * node,
     std::set<Node *> &subclade)
 {
   if (!node->next) {
