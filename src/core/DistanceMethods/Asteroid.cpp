@@ -81,6 +81,7 @@ double Asteroid::computeLength(const PLLUnrootedTree &speciesTree)
     }
   }
   ParallelContext::sumDouble(res);
+  res /= 2.0;
   return res;
 }
   

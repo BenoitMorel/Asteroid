@@ -32,6 +32,7 @@ void InternodeDistance::computeFromGeneTree(PLLUnrootedTree &geneTree,
   for (auto leaf: geneTree.getLeaves()) {
     auto spid = static_cast<size_t>(
         reinterpret_cast<intptr_t>(leaf->data));
+    distanceMatrix[spid][spid] = 0.0;
     computeFromGeneTreeAux(leaf->back,
         params,
         0.0,
@@ -44,11 +45,11 @@ static void computeFromSpeciesTreeAux(corax_unode_t *node,
     unsigned int d,
     std::vector<unsigned int> &distances)
 {
-  d += 1;
   if (!node->next) {
     distances[node->node_index] = d; 
     return;
   }
+  d += 1;
   for (auto n = node->next; n != node; n = n->next) {
     computeFromSpeciesTreeAux(n->back, d, distances);
   }
