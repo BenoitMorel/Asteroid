@@ -66,21 +66,6 @@ PLLUnrootedTree::PLLUnrootedTree(const std::string &str, bool isFile):
 {
 }
 
-std::unique_ptr<PLLUnrootedTree> PLLUnrootedTree::buildFromStrOrFile(const std::string &strOrFile)
-{
-  std::unique_ptr<PLLUnrootedTree> res;
-  try {
-    res = std::make_unique<PLLUnrootedTree>(strOrFile, true);
-  } catch (...) {
-    try {
-      res = std::make_unique<PLLUnrootedTree>(strOrFile, false);
-    } catch (...) {
-    }
-  }
-  return res;
-}
-
-
 PLLUnrootedTree::PLLUnrootedTree(const std::vector<const char*> &labels,
     unsigned int seed):
   _tree(corax_utree_random_create(static_cast<unsigned int>(labels.size()), &labels[0], seed), utreeDestroy)
@@ -280,29 +265,6 @@ struct less_than_key
   }
 };
 
-std::vector<corax_unode_t *> PLLUnrootedTree::getBranchesDeterministic() const
-{
-  // find a deterministic root
-  corax_unode_t *root = getNode(0);
-  std::string rootLabel(root->label);
-  for (auto leaf: getLeaves()) {
-    std::string label(leaf->label);
-    if (rootLabel > label) {
-      rootLabel = label;
-      root = leaf;
-    }
-  }
-  std::vector<ToSort> toSortVector;
-  ToSort toSort;
-  fillBranchesRec(root->back, toSortVector, toSort);
-  assert(toSortVector.size() == getLeavesNumber() * 2 - 3);
-  std::sort(toSortVector.begin(), toSortVector.end(), less_than_key());
-  std::vector<corax_unode_t *> res;
-  for (const auto &toSort: toSortVector) {
-    res.push_back(toSort.node);
-  }
-  return res;
-}
 
 static void fillPostOrder(corax_unode_t *node,
     std::vector<corax_unode_t*> &nodes,
@@ -926,7 +888,7 @@ void mapNodesWithInducedTreeAux(corax_unode_t *superNode,
 }
     
 
-void PLLUnrootedTree::mapNodesWithInducedTree(PLLUnrootedTree &inducedTree,
+void PLLUnrootedTree::mapNodesWithInducedTree(const PLLUnrootedTree &inducedTree,
       const NodeVector &superPostOrderNodes,
       NodeVector &superToInduced,
       NodeVector &superToInducedRegraft

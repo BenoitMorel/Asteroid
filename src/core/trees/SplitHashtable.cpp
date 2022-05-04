@@ -44,18 +44,15 @@ void SplitHashtable::addTree(PLLUnrootedTree &tree)
       _splits); 
 }
 
-static char* intToString(int num) { 
-  int size = log10(num) + 1; 
-  if (num == 0) {
-    size = 2;
-  }
+static char* intToString(unsigned int num) { 
+  auto size = (num == 0 ? 2 : static_cast<size_t>(log10(static_cast<float>(num))) + 1.0); 
   auto str = static_cast<char*>(malloc(size*sizeof(char)));
-  sprintf(str, "%d",num); 
+  sprintf(str, "%u",num); 
   return str;
 } 
 
 static void writeSupport(corax_unode_t *node,
-    int support)
+    unsigned int support)
 {
   free(node->label);
   node->label = intToString(support);
@@ -76,7 +73,7 @@ static BitVector setSupportValue(corax_unode_t *node,
     if (!node->back->next) { // first recursion call 
       return split;
     }
-    int support = 0;
+    unsigned int support = 0;
     auto it = splits.find(split);
     if (it != splits.end()) {
       support = it->second;

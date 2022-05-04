@@ -41,8 +41,8 @@ private:
   
   void _updateDeltas();
   void _updatePhis(unsigned int spid);
-  double _computeDelta(std::set<Node *>&s1,
-      std::set<Node *>s2,
+  double _computeDelta(const std::set<Node *>&s1,
+      const std::set<Node *> &s2,
       const DistanceMatrix &geneMatrix,
       const MatrixUint &speciesMatrix,
       const std::vector<unsigned int> &spidToGid);

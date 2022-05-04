@@ -9,8 +9,8 @@
 
 void GeneSpeciesMapping::fill(const GeneSpeciesMapping &mapping)
 {
-  auto &m = mapping.getMap();
-  for (auto &pair: m) {
+  const auto &m = mapping.getMap();
+  for (const auto &pair: m) {
     _map[pair.first] = pair.first;
   }
 }

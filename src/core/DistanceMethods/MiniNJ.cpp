@@ -31,7 +31,7 @@ void fillDistancesRec(corax_unode_t *currentNode,
 
 void MiniNJ::geneDistancesFromGeneTree(PLLUnrootedTree &geneTree,
     GeneSpeciesMapping &mapping,
-    StringToUint &speciesStringToSpeciesId,
+    const StringToUint &speciesStringToSpeciesId,
     DistanceMatrix &distances,
     DistanceMatrix &distancesDenominator,
     bool minMode,

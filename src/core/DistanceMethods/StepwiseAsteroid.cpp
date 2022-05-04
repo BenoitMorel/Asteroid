@@ -203,7 +203,7 @@ Node *findBestInsertionBranch(unsigned int spid, // of the taxa to add
     std::vector<MatrixUint> &speciesMatrices,
     const std::vector<GeneCell *> &geneCells,
     UIntMatrix &spidToGid,
-    std::vector<IntPairToDouble> &deltas,
+    const std::vector<IntPairToDouble> &deltas,
     MatrixDouble &phis)
   
 {
@@ -276,8 +276,8 @@ void getSubClade(Node * node,
   }
 }
 
-double StepwiseAsteroid::_computeDelta(std::set<Node *>&s1,
-    std::set<Node *>s2,
+double StepwiseAsteroid::_computeDelta(const std::set<Node *>&s1,
+    const std::set<Node *> &s2,
     const DistanceMatrix &geneMatrix,
     const MatrixUint &speciesMatrix,
     const std::vector<unsigned int> &spidToGid)

@@ -59,6 +59,7 @@ void init(Arguments &arg)
   Logger::timed << "Starting Asteroid..." << std::endl;
   arg.printCommand();
   Random::setSeed(static_cast<unsigned int>(arg.seed));
+  assert(ParallelContext::isRandConsistent());
 }
 
 /**

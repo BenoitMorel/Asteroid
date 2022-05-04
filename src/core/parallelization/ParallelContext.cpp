@@ -477,7 +477,8 @@ void ParallelContext::abort(int errorCode)
 
 bool ParallelContext::allowSchedulerSplitImplementation()
 {
-  return getSize() > 4;
+  const int MIN_RANKS_SPLIT_IMPLEM = 4;
+  return getSize() > MIN_RANKS_SPLIT_IMPLEM;
 }
 
 bool ParallelContext::isRandConsistent()
@@ -496,31 +497,29 @@ void ParallelContext::makeRandConsistent()
 bool ParallelContext::isIntEqual(int value)
 {
 #ifdef WITH_MPI
-  std::vector<int> rands(getSize());
-  allGatherInt(value, rands);
-  auto any = rands[0];
-  for (auto v: rands) {
-    if (v != any) {
-      return false;
-    }
-  }
-#endif
+  std::vector<int> vec(getSize());
+  allGatherInt(value, vec);
+  return std::all_of(vec.begin(),
+      vec.end(),
+      [=](int elem){return elem == vec[0];});
+  
+#else
   return true;
+#endif
 }
 
 bool ParallelContext::isDoubleEqual(double value)
 {
 #ifdef WITH_MPI
-  std::vector<double> rands(getSize());
-  allGatherDouble(value, rands);
-  auto any = rands[0];
-  for (auto v: rands) {
-    if (fabs(v - any) > 0.00000001) {
-      return false;
-    }
-  }
-#endif
+  std::vector<double> vec(getSize());
+  allGatherDouble(value, vec);
+  const double EPSILON_EQUAL_DOUBLE = 0.000000001;
+  return std::all_of(vec.begin(),
+      vec.end(),
+      [=](int elem){return fabs(elem-vec[0]) < EPSILON_EQUAL_DOUBLE;});
+#else
   return true;
+#endif
 }
     
 const char* ParallelContext::ParallelException::what() const noexcept 

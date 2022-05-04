@@ -42,14 +42,15 @@ bool isSPRMoveValid(PLLUnrootedTree &tree,
   return !sprYeldsSameTree(prune, regraft);
 }
 
+
+
 bool isInScores(const std::vector<double> &scores, double score)
 {
-  for (auto s: scores) {
-    if (fabs(s-score) < 0.000001) {
-      return true;
-    }
-  }
-  return false;
+  const double EPSILON_SCORE = 0.000001;
+  return std::any_of(scores.begin(),
+      scores.end(),
+      [=](double s) {return fabs(s-score) < EPSILON_SCORE;}
+      );
 }
 
 void addInvolvedNode(corax_unode_t *node, 

@@ -16,6 +16,11 @@ int Random::getInt(int max)
   return getInt() % max;
 }
 
+unsigned int Random::getUInt(unsigned int max)
+{
+  return _d._unii_unsigned(_d._rng) % max;
+}
+
 double Random::getProba() 
 {
   return _d._uniproba(_d._rng);

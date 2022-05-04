@@ -8,12 +8,14 @@ public:
   static void setSeed(unsigned int seed);
   static int getInt(); 
   static int getInt(int max); 
+  static unsigned int getUInt(unsigned int max);
   static double getProba();
   static std::mt19937_64 &getRNG() {return _d._rng;}
 private:
   struct Distributions {
     std::mt19937_64 _rng;
     std::uniform_int_distribution<int> _unii;
+    std::uniform_int_distribution<unsigned int> _unii_unsigned;
     std::uniform_real_distribution<double> _uniproba;
   };
 

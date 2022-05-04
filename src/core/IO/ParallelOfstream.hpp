@@ -8,7 +8,7 @@
 
 class ParallelOfstream {
 public:
-  ParallelOfstream(const std::string &fileName, bool masterRankOnly = true);
+  explicit ParallelOfstream(const std::string &fileName, bool masterRankOnly = true);
   void close();
   ~ParallelOfstream();
 private:

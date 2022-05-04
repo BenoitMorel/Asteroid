@@ -33,11 +33,9 @@ public:
    * Construct from a string that is either a path 
    * to a newick file or a newick string
    */
-  PLLUnrootedTree(const std::string &str, bool isFile = true);
+  explicit PLLUnrootedTree(const std::string &str, bool isFile = true);
 
 
-
-  static std::unique_ptr<PLLUnrootedTree> buildFromStrOrFile(const std::string &strOrFile);
 
   std::shared_ptr<PLLUnrootedTree> getInducedTree(const std::vector<bool> &okNodeIndices) const;
   std::shared_ptr<PLLUnrootedTree> getInducedTree(const BitVector &okNodeIndice) const;
@@ -45,8 +43,8 @@ public:
   /**
    *  Construct a random tree from a set of taxa labels
    */
-  PLLUnrootedTree(const std::vector<const char*> &labels, unsigned int seed = static_cast<unsigned int>(Random::getInt()));
-  PLLUnrootedTree(const std::unordered_set<std::string> &labels,
+  explicit PLLUnrootedTree(const std::vector<const char*> &labels, unsigned int seed = static_cast<unsigned int>(Random::getInt()));
+  explicit PLLUnrootedTree(const std::unordered_set<std::string> &labels,
       unsigned int seed = static_cast<unsigned int>(Random::getInt()));
 
   /**
@@ -149,7 +147,6 @@ public:
    *  one of node and node->back will be inserted in the set)
    */
   std::unordered_set<corax_unode_t *> getBranches() const;
-  std::vector<corax_unode_t *> getBranchesDeterministic() const;
 
   /**
    *  Compute a matrix of pairwise distances.
@@ -205,7 +202,7 @@ public:
   static corax_unode_t *getLeft(corax_unode_t *node) {return node->next->back;}
   static corax_unode_t *getRight(corax_unode_t *node) {return node->next->next->back;}
 
-  void mapNodesWithInducedTree(PLLUnrootedTree &inducedTree,
+  void mapNodesWithInducedTree(const PLLUnrootedTree &inducedTree,
       const NodeVector &superPostOrderNodes,
       NodeVector &superToInduced,
       NodeVector &superToInducedRegraft

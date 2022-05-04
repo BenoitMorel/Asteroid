@@ -128,7 +128,7 @@ private:
   class ParallelException: public std::exception
   {
   public:
-    ParallelException(int errorCode):
+    explicit ParallelException(int errorCode):
       msg_("Program failed with error " + std::to_string(errorCode))
 
     {

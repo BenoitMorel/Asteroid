@@ -110,7 +110,7 @@ Node *StepwiseTree::getRandomBranch()
   if (!_nodes.size()) {
     return nullptr;
   }
-  return _nodes[Random::getInt(_nodes.size())];
+  return _nodes[Random::getUInt(_nodes.size())];
 }
     
 Node *StepwiseTree::getAnyBranch() const
@@ -156,7 +156,7 @@ std::vector<Node *> StepwiseTree::getBranches() const
 
 void StepwiseTree::addNode(Node *node)
 {
-  node->index = _nodes.size();
+  node->index = static_cast<unsigned int>(_nodes.size());
   _nodes.push_back(node);
 }
     

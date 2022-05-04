@@ -74,7 +74,7 @@ public:
      * @brief Constructor that takes a size and an optional bool value to initialize the Bitvector,
      * false by default.
      */
-    Bitvector( size_t size, bool initial_value = false)
+    explicit Bitvector( size_t size, bool initial_value = false)
         : size_(size)
     {
         // reserve enough bits, and init them.
@@ -85,7 +85,7 @@ public:
     /**
      * @brief Constructor that takes a size and a list of values (positions) to be set to true.
      */
-    Bitvector( size_t size, std::initializer_list<size_t> list)
+    explicit Bitvector( size_t size, std::initializer_list<size_t> list)
         : Bitvector(size, false)
     {
         for (size_t e : list) {
@@ -99,7 +99,7 @@ public:
      * This is for cases where some fixed Bitvector needs to be constructed (e.g., for testing
      * purposes). The constructor throws if any character in the string is not `0` or `1`.
      */
-    Bitvector( std::string const& values );
+    explicit Bitvector( std::string const& values );
 
     /**
      * @brief Create a Bitvector by copying the first @p max_size of another Bitvector.
