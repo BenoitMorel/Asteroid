@@ -9,6 +9,7 @@ InducedStepwiseTree::InducedStepwiseTree(const StepwiseTree &superTree,
   _inducedToSuperGhost(4 * coverage.count() - 6),
   _taxaCount(0)
 {
+
 }
 
 InducedStepwiseTree::~InducedStepwiseTree()
@@ -122,7 +123,7 @@ static bool findSuperLCAs(Node *node,
 }
  
 
-void InducedStepwiseTree::addLeaf(Node *superLeaf,
+Node *InducedStepwiseTree::addLeaf(Node *superLeaf,
       unsigned int spid)
 { 
   // this function has many special cases to consider
@@ -137,9 +138,10 @@ void InducedStepwiseTree::addLeaf(Node *superLeaf,
       _taxaCount++;
       // and map it to its corresponding leaf in the supertree
       mapNodes(superLeaf, inducedLeaf);
+      return inducedLeaf;
     } 
     // if the taxa is not covered, we do not have anything to do
-    return;
+    return nullptr;
   } 
   if (_taxaCount == 1) {
     // second edge case: we only have one leaf
@@ -161,25 +163,12 @@ void InducedStepwiseTree::addLeaf(Node *superLeaf,
           mapGhostNode(superNode, singleInducedBranch);
         }
       }
+      return inducedLeaf;
     }
     // if the taxa is not covered, we do not have anything to do
-    return;
+    return nullptr;
   }
   
-  /*
-  int unmappedCount = 0;
-  for (auto node: _supertree.getAllNodes()) {
-    if (!_superToInduced[node->index]) {
-      unmappedCount++;
-      std::cout << "unmapped: " << node->index << std::endl;
-    }
-  }
-  for (auto node: _inducedTree.getAllNodes()) {
-    assert(_inducedToSuper[node->index]);
-  }
-  assert(unmappedCount == 4);
-  */
-
   // the three freshly added internal nodes in the supertree:
   auto super1 = superLeaf->back;
   auto super2 = super1->next;
@@ -194,6 +183,7 @@ void InducedStepwiseTree::addLeaf(Node *superLeaf,
     mapGhostNode(super2, inducedBranch); 
     mapGhostNode(super3, inducedBranch); 
     mapGhostNode(superLeaf, inducedBranch);
+    return nullptr;
   } else {
     // the induced tree covers this taxa, so we add it
     // to the induced tree
@@ -247,6 +237,7 @@ void InducedStepwiseTree::addLeaf(Node *superLeaf,
     mapGhostUntilBound(lcas[0]->back, superBound1, inducedTriplet[0]);
     mapGhostUntilBound(lcas[1]->back, superBound2, inducedTriplet[1]);
     mapGhostUntilBound(lcas[2]->back, superBound3, inducedTriplet[2]);
+    return inducedLeaf;
   }
 }
 

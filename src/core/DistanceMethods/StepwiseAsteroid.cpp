@@ -49,6 +49,19 @@ StepwiseAsteroid::StepwiseAsteroid(const StringToUint &speciesToSpid,
   for (unsigned int i = 0; i < _N; ++i) {
     _pows.push_back(std::pow(0.5, double(i)));
   }
+  // we can already fill the average distance between every
+  // pair of leaves
+  /*
+  for (unsigned int k = 0; k < _K; ++k) {
+    const auto &geneMatrix = _geneCells[k]->distanceMatrix;
+    auto Nk = geneCells[k]->coverage.count();
+    for (unsigned int gid1 = 0; gid1 < Nk; ++gid1) {
+      for (unsigned int gid2 = 0; gid2 < Nk; ++gid2) {
+        _deltas[k][gid1][gid2] = geneMatrix[gid1][gid2];
+      }
+    }
+  }
+  */
 }
   
 
@@ -323,16 +336,6 @@ double StepwiseAsteroid::_getPhi(unsigned int gid,
   }
 }
 
-/*
-void fillDeltaForAddedTaxon(Node *node,
-    unsigned int taxonGid,
-    const DistanceMatrix &geneDistances,
-    DistanceMatrix &deltas)
-{
-  if (!node->next) {
-  }
-}
-*/
 
 void StepwiseAsteroid::_updatePhis(unsigned int spid)
 {
@@ -347,8 +350,134 @@ void StepwiseAsteroid::_updatePhis(unsigned int spid)
     }
   }
 }
-      
+
+double StepwiseAsteroid::_updateDeltasNewTaxonAux(
+    unsigned int taxonGid,
+    unsigned int taxonIndex,
+    unsigned int k,
+    Node *node)
+{
+  double d = 0.0;
+  if (!node->next) { // leaf case
+    auto gid = _spidToGid[k][node->spid];
+    d = _geneCells[k]->distanceMatrix[taxonGid][gid]; 
+    _deltas[k][taxonIndex][node->index] = d; 
+    _deltas[k][node->index][taxonIndex] = d;
+    return d;
+  } else {
+    auto left = node->next->back;
+    auto right = node->next->next->back;
+    d += _updateDeltasNewTaxonAux(taxonGid, taxonIndex, k, left);
+    d += _updateDeltasNewTaxonAux(taxonGid, taxonIndex, k, right);
+    d *= 0.5;
+  }
+  return d;
+}
+
+void StepwiseAsteroid::_updateDeltasNewTaxon(unsigned int taxonSpid)
+{
+  for (unsigned int k = 0; k < _K; ++k) {
+    auto inducedTaxon = _tree.getLastAddedInducedNodes()[k];
+    if (inducedTaxon && inducedTaxon->back) {
+      auto taxonGid = _spidToGid[k][taxonSpid];
+      _updateDeltasNewTaxonAux(taxonGid, 
+          inducedTaxon->index,
+          k,
+          inducedTaxon->back);
+    }
+  }
+}
+
+/*
+  insertedNode   Y1              Yn
+        |         |               |
+        *         *               *
+  *----* *-------* *---- .... ---* *---------* 
+  ^      ^         ^               ^         ^
+  A  chain[0]    chain[1]     chain.back()  B
+
+*/
+void StepwiseAsteroid::_updateDeltasChain(unsigned int k,
+    Node *insertedNode,
+    const std::vector<Node *> &chain)
+{
+  //auto A = chain[0]->back;
+  auto A = StepwiseTree::getOtherNext(insertedNode->back, chain[0])->back; 
+  auto B = chain.back()->back;
+  for (unsigned int i = 0; i < chain.size(); ++i) {
+    auto C = chain[i];
+    auto Cminus1 = i ? chain[i-1] : A;
+    auto Yback = StepwiseTree::getOtherNext(C, Cminus1->back);
+    assert(Yback);
+    auto Y = Yback->back;
+    assert(Y);
+    //_deltas[k][C->index][B->index];
+    auto d = 0.5 * 
+    (_deltas[k][B->index][Cminus1->index]
+     + _deltas[k][B->index][Y->index]);
+    _deltas[k][B->index][C->index] = d;
+    _deltas[k][C->index][B->index] = d;
+  }
+}
+
+void StepwiseAsteroid::_updateDeltasAux(unsigned int k,
+    Node *insertedNode,
+    Node *B,
+    std::vector<Node *> &chain)
+{
+  chain.push_back(B);
+  _updateDeltasChain(k, insertedNode, chain);
+  if (B->back->next) {
+    auto B1 = B->back->next;//B->next->back;
+    auto B2 = B->back->next->next;
+    //auto B2 = B->next->next->back;
+    _updateDeltasAux(k, insertedNode, B1, chain);
+    _updateDeltasAux(k, insertedNode, B2, chain);
+  }
+  chain.pop_back();
+}
+
 void StepwiseAsteroid::_updateDeltas()
+{
+  for (unsigned int k = 0; k < _K; ++k) { // for each induced tree
+    // inserted node is the node that was inserted in the induced
+    // tree k at the last step 
+    auto insertedNode = _tree.getLastAddedInducedNodes()[k];
+    if (!insertedNode) {
+      // this induced tree does not cover the taxon inserted
+      // at the last step
+      continue;
+    }
+    // We now want to iterate over all nodes A that have the
+    // inserted node as descendant, and for each such A, over
+    // each node B whose subtree does not intersect the subtree 
+    // of A. We also need to keep track of the chain chainAB of nodes
+    // between the A and B nodes. We can then call _updateDeltasChain
+    // on each such A and each chainAB
+    //
+    if (insertedNode && insertedNode->back && insertedNode->back->next) {
+      std::vector<Node *> chain;
+      auto B1 = insertedNode->back->next;
+      auto B2 = insertedNode->back->next->next;
+      _updateDeltasAux(k, insertedNode, B1, chain);
+      _updateDeltasAux(k, insertedNode, B2, chain);
+      /*
+      std::vector<Node *> Abacks; // all A->back nodes
+      StepwiseTree::fillPostOrder(insertedNode->back->next->back, 
+          Abacks);
+      StepwiseTree::fillPostOrder(insertedNode->back->next->next->back, 
+          Abacks);
+      for (auto Aback: Abacks) {
+        std::vector<Node *> chain;
+        _updateDeltasAux(k, insertedNode, Aback, chain);
+      }
+      */
+    }
+  }
+   
+}
+
+void StepwiseAsteroid::_updateDeltasOld()
 {
   for (unsigned int k = 0; k < _K; ++k) {
     for (auto node: _inducedTrees[k]->getWrappedTree().getAllNodes()) {
@@ -377,6 +506,8 @@ void StepwiseAsteroid::_updateDeltas()
   }
 }
 
+
+
 void StepwiseAsteroid::insertLabel(const std::string &label)
 {
   auto spid = _speciesToSpid.at(label);
@@ -389,8 +520,10 @@ void StepwiseAsteroid::insertLabel(const std::string &label)
     _tree.addLeaf(spid, _tree.getAnyBranch());
     return;
   }
-  _updateDeltas();
+  _updateDeltasOld();
   _updatePhis(spid);
+  _updateDeltasNewTaxon(spid); 
+  _updateDeltas();
   auto bestBranch = findBestInsertionBranch(spid,
       _tree,
       _inducedTrees,
@@ -406,6 +539,5 @@ void StepwiseAsteroid::exportTree(const std::string &outputPath)
 {
   ParallelOfstream os(outputPath);
   os << _tree.getNewickString(_spidToSpecies) << std::endl;
-
 }
 

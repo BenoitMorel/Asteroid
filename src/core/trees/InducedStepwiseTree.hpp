@@ -10,6 +10,14 @@ using InducedToSuperNodes = std::vector<Node *>;
 using SuperToInducedNodes = std::vector<Node *>;
 using InducedToSuperGhost = std::vector<BranchSet>;
 using NodeTriplet = std::array<Node *, 3>;
+
+/**
+ *  Tree induced from a StepwiseTree and a given coverage vector
+ *  After being created, the InducedStepwiseTree should be attached
+ *  to its supertree via supertree.addListener 
+ *  Then, every time a taxon is added to the superTree, the
+ *  induced tree will be updated accordingly
+ */
 class InducedStepwiseTree
 {
 public:
@@ -17,13 +25,19 @@ public:
       const BitVector &coverage);
   virtual ~InducedStepwiseTree();
 
-  void addLeaf(Node *superLeaf,
+  /*
+   *  Add a leaf to the induced tree if it is covered
+   *  and return the new induced leaf
+   */
+  Node *addLeaf(Node *superLeaf,
       unsigned int spid);
 
   const StepwiseTree &getWrappedTree() const {return _inducedTree;}
 
   BranchSet getSuperBranches(Node *inducedNode) const;
   Node *getInducedBranch(Node *superNode) const {return _superToInduced[superNode->index];}
+
+
 
 private:
   // the induced tree beeing built

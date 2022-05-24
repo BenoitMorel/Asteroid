@@ -23,14 +23,14 @@ StepwiseTree::StepwiseTree()
 }
 
 Node *StepwiseTree::addLeaf(unsigned int spid,
-    Node *branch)
+    Node *insertionBranch)
 {
   auto leaf = new Node();
   leaf->spid = spid;
   addNode(leaf);
   if (_nodes.size() == 1) { // first  leaf
   } else if (_nodes.size() == 2) { // second leaf
-    linkBack(leaf, branch);
+    linkBack(leaf, insertionBranch);
   } else {
     auto n1 = new Node();
     auto n2 = new Node();
@@ -38,15 +38,15 @@ Node *StepwiseTree::addLeaf(unsigned int spid,
     addNode(n1);
     addNode(n2);
     addNode(n3);
-    auto b1 = branch;
-    auto b2 = branch->back;
+    auto b1 = insertionBranch;
+    auto b2 = insertionBranch->back;
     linkBack(leaf, n1);
     linkBack(n2, b1);
     linkBack(n3, b2);
     linkNext(n1, n2, n3);
   }
-  for (auto listener: _listeners) {
-    listener->addLeaf(leaf, spid);
+  for (unsigned int k = 0; k < _listeners.size(); ++k) {
+    _lastAddedInducedNode[k] = _listeners[k]->addLeaf(leaf, spid);
   }
   return leaf;
 }
@@ -163,6 +163,7 @@ void StepwiseTree::addNode(Node *node)
 void StepwiseTree::addListener(InducedStepwiseTree *listener)
 {
   _listeners.push_back(listener);
+  _lastAddedInducedNode.push_back(nullptr);
 }
 Node *StepwiseTree::getOtherNext(Node *n1, Node *n2)
 {
@@ -170,6 +171,15 @@ Node *StepwiseTree::getOtherNext(Node *n1, Node *n2)
     return n1->next->next;
   } else {
     return n1->next;
+  }
+}
+    
+void StepwiseTree::fillPostOrder(Node *root, std::vector<Node *> &nodes)
+{
+  nodes.push_back(root);
+  if (root->next) {
+    fillPostOrder(root->next->back, nodes);
+    fillPostOrder(root->next->next->back, nodes);
   }
 }
 

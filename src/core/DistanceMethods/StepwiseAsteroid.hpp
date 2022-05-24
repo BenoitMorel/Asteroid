@@ -40,6 +40,7 @@ private:
   MatrixDouble _phis;
   
   void _updateDeltas();
+  void _updateDeltasOld();
   void _updatePhis(unsigned int spid);
   double _computeDelta(const std::set<Node *>&s1,
       const std::set<Node *> &s2,
@@ -51,6 +52,19 @@ private:
       const DistanceMatrix &geneMatrix,
       const std::vector<unsigned int> &spidToGid,
       unsigned int depth);
+  double _updateDeltasNewTaxonAux(
+    unsigned int taxonGid,
+    unsigned int taxonIndex,
+    unsigned int k,
+    Node *node);
+  void _updateDeltasNewTaxon(unsigned int taxonSpid);
+  void _updateDeltasAux(unsigned int k,
+      Node *insertedNode,
+      Node *B,
+      std::vector<Node *> &chain);
+  void _updateDeltasChain(unsigned int k,
+    Node *newTaxon,
+    const std::vector<Node *> &chain);
 };
 
 
