@@ -37,7 +37,7 @@ public:
   BranchSet getSuperBranches(Node *inducedNode) const;
   Node *getInducedBranch(Node *superNode) const {return _superToInduced[superNode->index];}
 
-
+  Node *getAnyNode() {return _inducedTree.getAnyLeaf();}
 
 private:
   // the induced tree beeing built

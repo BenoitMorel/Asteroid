@@ -41,6 +41,11 @@ class StepwiseTree
         Node *branch);
 
     /**
+     *  Node index of the next node that will be added if addNode is called
+     */
+    unsigned int getNextNewNodeIndex() const {return static_cast<unsigned int>(_nodes.size());}
+
+    /**
      *  Randomly return a branch
      */
     Node *getRandomBranch();
@@ -93,10 +98,9 @@ class StepwiseTree
     }
 
     /**
-     *  Fill nodes with all nodes under root (root is also inserted)
-     *  in a post order traversal
-     */
-    static void fillPostOrder(Node *root, std::vector<Node *> &nodes);
+     * Fill all nodes in post order traversal
+     */ 
+    void fillPostOrder(std::vector<Node *> &nodes) const;
   private:
     void addNode(Node *node);
     std::vector<Node *> _nodes;

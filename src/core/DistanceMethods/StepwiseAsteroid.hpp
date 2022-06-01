@@ -35,6 +35,10 @@ private:
   std::vector<double> _pows;
 
   // information to compute the score diff
+
+  // _deltas[k][i1][i2] stores the average distance between
+  // the nodes whose indices are i1 and i2 in the induced tree k
+  // See the FastME paper for the definition of the average distance
   std::vector<MatrixDouble> _deltas;
   std::vector<IntPairToDouble> _slowDeltas;
   MatrixDouble _phis;

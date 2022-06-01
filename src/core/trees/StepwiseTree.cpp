@@ -156,7 +156,7 @@ std::vector<Node *> StepwiseTree::getBranches() const
 
 void StepwiseTree::addNode(Node *node)
 {
-  node->index = static_cast<unsigned int>(_nodes.size());
+  node->index = getNextNewNodeIndex();
   _nodes.push_back(node);
 }
     
@@ -167,19 +167,40 @@ void StepwiseTree::addListener(InducedStepwiseTree *listener)
 }
 Node *StepwiseTree::getOtherNext(Node *n1, Node *n2)
 {
+  assert( n1 != n2);
   if (n1->next == n2) {
     return n1->next->next;
   } else {
     return n1->next;
   }
 }
-    
-void StepwiseTree::fillPostOrder(Node *root, std::vector<Node *> &nodes)
+
+
+void fillPostOrderAux(Node *node,
+    std::vector<bool> &marked,
+    std::vector<Node *> &nodes)
 {
-  nodes.push_back(root);
-  if (root->next) {
-    fillPostOrder(root->next->back, nodes);
-    fillPostOrder(root->next->next->back, nodes);
+  if (marked[node->index]) {
+    return;
   }
+  marked[node->index] = true;
+  
+  if (node->next) {
+    auto n1 = node->next->back;
+    auto n2 = node->next->next->back;
+    fillPostOrderAux(n1, marked, nodes);
+    fillPostOrderAux(n2, marked, nodes);
+  }
+  nodes.push_back(node);
+
+}
+
+void StepwiseTree::fillPostOrder(std::vector<Node *> &nodes) const
+{
+  std::vector<bool> marked(_nodes.size(), false);
+  for (auto node: _nodes) {
+    fillPostOrderAux(node, marked, nodes);
+  }
+  assert(nodes.size() == _nodes.size());
 }
 
