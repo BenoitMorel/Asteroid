@@ -31,8 +31,6 @@ private:
   StepwiseTree _tree;
   InducedStepwiseTrees _inducedTrees;
   BitVector _insertedSpecies;
-  std::vector<MatrixUint> _speciesMatrices;
-  std::vector<double> _pows;
 
   // information to compute the score diff
 
@@ -40,12 +38,8 @@ private:
   // the nodes whose indices are i1 and i2 in the induced tree k
   // See the FastME paper for the definition of the average distance
   std::vector<MatrixDouble> _deltas;
-  std::vector<IntPairToDouble> _slowDeltas;
-  MatrixDouble _phis;
   
   void _updateDeltas();
-  void _updateDeltasOld();
-  void _updatePhis(unsigned int spid);
   double _computeDelta(const std::set<Node *>&s1,
       const std::set<Node *> &s2,
       const DistanceMatrix &geneMatrix,
