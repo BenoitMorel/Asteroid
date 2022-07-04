@@ -25,6 +25,8 @@ Arguments::Arguments(int argc, char * argv[]):
       ParallelContext::abort(0);
     } else if (arg == "-i" || arg == "--input-gene-trees") {
       inputGeneTreeFile = std::string(argv[++i]);
+    } else if (arg == "-w" || arg == "--weights") {
+      inputWeights = std::string(argv[++i]);
     } else if (arg == "-r" || arg == "--random-starting-trees") {
       randomStartingTrees = static_cast<unsigned int>(atoi(argv[++i]));
     } else if (arg == "-b" || arg == "--bs-trees") {

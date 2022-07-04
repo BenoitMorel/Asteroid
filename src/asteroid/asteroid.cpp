@@ -78,6 +78,22 @@ static void readGeneTrees(const std::string &inputGeneTreeFile,
   parseTrees(inputGeneTreeFile,
       geneTrees);
 }
+  
+static void readUserWeights(const std::string &userWeightsFile, 
+    std::vector<double> &userWeights)
+{
+  Logger::timed << "Parsing user-specified weights..." << std::endl;
+  std::ifstream reader(userWeightsFile);
+  std::string weightStr;
+  while (std::getline(reader, weightStr)) {
+    if (weightStr.size() < 2) {
+      continue;
+    }
+    double weight = atof(weightStr.c_str());
+    userWeights.push_back(weight);
+  }
+  
+}
 
 /**
  *  Fills the gene-to-species mapping object:
@@ -249,7 +265,7 @@ static void getDataNoCorrection(const std::vector<GeneCell *> &geneCells,
       for (unsigned int jgid = 0; jgid < geneNumber; ++jgid) {
         auto jspid = cell->gidToSpid[jgid];
         astridDistanceMatrix[ispid][jspid] += 
-          cell->distanceMatrix[igid][jgid] * weight;
+          cell->distanceMatrix[igid][jgid] * weight * cell->userWeight;
         denominator[ispid][jspid] += weight; 
       }
     }
@@ -278,9 +294,6 @@ static void getDataWithCorrection(const std::vector<GeneCell *> &geneCells,
         UIntMatrix &gidToSpid,
         unsigned int speciesNumber)
 {
-  DistanceMatrix astridDistanceMatrix = initDistancetMatrix(speciesNumber,
-      speciesNumber,
-      0.0);
   BitVector lastCoverage;
   for (unsigned int k = 0; k < geneCells.size(); ++k) {
     if (!weights[k]) {
@@ -290,15 +303,14 @@ static void getDataWithCorrection(const std::vector<GeneCell *> &geneCells,
     double weight = static_cast<double>(weights[k]);
     auto geneNumber = cell->gidToSpid.size();
     if (cell->coverage != lastCoverage) {
-      distanceMatrices.push_back(cell->distanceMatrix);
+      distanceMatrices.push_back(initDistancetMatrix(geneNumber, geneNumber, 0.0));
       coverages.push_back(cell->coverage);
       gidToSpid.push_back(cell->gidToSpid);
-    } else {
-      auto &d = distanceMatrices.back();
-      for (unsigned int igid = 0; igid < geneNumber; ++igid) {
-        for (unsigned int jgid = 0; jgid < geneNumber; ++jgid) {
-          d[igid][jgid] += cell->distanceMatrix[igid][jgid] * weight;
-        }
+    }
+    auto &d = distanceMatrices.back();
+    for (unsigned int igid = 0; igid < geneNumber; ++igid) {
+      for (unsigned int jgid = 0; jgid < geneNumber; ++jgid) {
+        d[igid][jgid] += cell->distanceMatrix[igid][jgid] * weight * cell->userWeight;
       }
     }
     lastCoverage = cell->coverage;
@@ -465,6 +477,8 @@ int main(int argc, char * argv[])
   Arguments arg(argc, argv);
   // all gene trees
   GeneTrees geneTrees;
+  // user-given gene tree weights
+  std::vector<double> userWeights;
   // trees assigned to the local parallel core/rank
   GeneTrees perCoreGeneTrees;
   // map gene label to species label
@@ -484,6 +498,17 @@ int main(int argc, char * argv[])
   std::vector<GeneCell> allGeneCells;
   for (auto geneTree: geneTrees) {
     allGeneCells.push_back(GeneCell(geneTree));
+  }
+  if (arg.inputWeights.size()) {
+    readUserWeights(arg.inputWeights, userWeights);
+    if (userWeights.size() != allGeneCells.size()) {
+      Logger::info << "Error: the number of weights (" << userWeights.size() << 
+        ") is not equal to the number of input gene trees (" << allGeneCells.size() <<
+        "). Aborting. " << std::endl;
+    }
+    for (unsigned int k = 0; k < allGeneCells.size(); ++k) {
+      allGeneCells[k].userWeight = userWeights[k];
+    }
   }
   auto K = static_cast<unsigned int>(allGeneCells.size());
   fillGidToSpid(allGeneCells, mappings, speciesToSpid);

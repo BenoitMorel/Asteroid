@@ -11,9 +11,11 @@ struct Arguments {
   char ** argv;
 
   std::string inputGeneTreeFile;
+  std::string inputWeights;
   unsigned int randomStartingTrees;
   unsigned int bootstrapTrees;
   std::string prefix;
+  
   // if this argument is not set, we assume
   // single-copy families and that gene names
   // correspond to species names

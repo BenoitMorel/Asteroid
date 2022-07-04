@@ -19,10 +19,11 @@ using ScoredTrees = std::vector<ScoredTree>;
 
 struct GeneCell {
   TreePtr geneTree;
+  double userWeight;
   DistanceMatrix distanceMatrix;
   BitVector coverage;
   std::vector<unsigned int> gidToSpid;
-  GeneCell(TreePtr ptr = nullptr): geneTree(ptr) {}
+  GeneCell(TreePtr ptr = nullptr): geneTree(ptr), userWeight(1.0) {}
 };
 
 
