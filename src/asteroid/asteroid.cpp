@@ -137,17 +137,30 @@ static void fillGidToSpid(std::vector<GeneCell> &geneCells,
 {
   StringToUint labelToGid;
   for (auto &geneCell: geneCells) {
+    std::unordered_map<unsigned int, unsigned int> spidToGid;
     auto &geneTree = *geneCell.geneTree;
     // the following line 
     // ensures that two gene trees with the same
     // leaf set also have the same leaf node indices:
     geneTree.sortLeaves();
     for (auto leaf: geneTree.getLeaves()) {
-      intptr_t gid = leaf->node_index;
       const auto &species = mappings.getSpecies(leaf->label);
       auto spid = speciesToSpid.at(species);
+      intptr_t gid = 0;
+      auto it = spidToGid.find(spid);
+      if (it != spidToGid.end()) {
+        gid = it->second;
+      } else {
+        gid = spidToGid.size();
+        spidToGid.insert({spid, gid});
+      }
+      //intptr_t gid = leaf->node_index;
       leaf->data = reinterpret_cast<void*>(gid);
-      geneCell.gidToSpid.push_back(spid);
+      //geneCell.gidToSpid.push_back(spid);
+    }
+    geneCell.gidToSpid.resize(spidToGid.size());
+    for (auto it: spidToGid) {
+      geneCell.gidToSpid[it.second] = it.first;
     }
   }
 }
@@ -499,7 +512,9 @@ int main(int argc, char * argv[])
   for (auto geneTree: geneTrees) {
     allGeneCells.push_back(GeneCell(geneTree));
   }
+
   if (arg.inputWeights.size()) {
+    assert(false);
     readUserWeights(arg.inputWeights, userWeights);
     if (userWeights.size() != allGeneCells.size()) {
       Logger::info << "Error: the number of weights (" << userWeights.size() << 
@@ -515,6 +530,9 @@ int main(int argc, char * argv[])
   computeFamilyCoverage(allGeneCells, speciesNumber);
   std::unordered_map<BitVector, std::vector<GeneCell *> > cellMap;
   for (auto &cell: allGeneCells) {
+    if (cell.coverage.count() < 4) {
+      continue;
+    }
     if (cellMap.end() == cellMap.find(cell.coverage)) {
       cellMap.insert({cell.coverage, std::vector<GeneCell *>()});
     }
