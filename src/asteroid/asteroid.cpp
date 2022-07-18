@@ -304,8 +304,7 @@ static void getDataWithCorrection(const std::vector<GeneCell *> &geneCells,
         const std::vector<unsigned int> &weights,
         std::vector<DistanceMatrix> &distanceMatrices,
         std::vector<BitVector> &coverages,
-        UIntMatrix &gidToSpid,
-        unsigned int speciesNumber)
+        UIntMatrix &gidToSpid)
 {
   BitVector lastCoverage;
   for (unsigned int k = 0; k < geneCells.size(); ++k) {
@@ -351,8 +350,7 @@ static double optimize(PLLUnrootedTree &speciesTree,
         weights,
         distanceMatrices,
         coverages,
-        gidToSpid,
-        speciesTree.getLeavesNumber());
+        gidToSpid);
   }
   AsteroidOptimizer optimizer(speciesTree,
       coverages,
@@ -484,52 +482,56 @@ static void generateStepwiseTree(const StringToUint &speciesToSpid,
 }
 
 
-int main(int argc, char * argv[])
-{
-  // user-specified arguments
-  Arguments arg(argc, argv);
-  // all gene trees
+struct AsteroidInstance {
   GeneTrees geneTrees;
-  // user-given gene tree weights
-  std::vector<double> userWeights;
+  std::vector<GeneCell> allGeneCells;
+  std::vector<GeneCell *> geneCells;
+  std::vector<GeneCell *> perCoreGeneCells;
+  StringToUint speciesToSpid;
   // trees assigned to the local parallel core/rank
   GeneTrees perCoreGeneTrees;
+  std::unordered_set<std::string> speciesLabels;
+};
+
+
+void initInstance(const Arguments &arg,
+    const std::string &inputGeneTreeFile,
+    AsteroidInstance &instance)
+{
+  // user-given gene tree weights
+  std::vector<double> userWeights;
   // map gene label to species label
   GeneSpeciesMapping mappings;
-  // map species labels to species spid
-  StringToUint speciesToSpid;
-   
-  UIntMatrix gidToSpid;
-
-  init(arg);
-  readGeneTrees(arg.inputGeneTreeFile, geneTrees);
-  extractMappings(arg, geneTrees, mappings, speciesToSpid); 
+  
+  readGeneTrees(inputGeneTreeFile, instance.geneTrees);
+  extractMappings(arg, 
+      instance.geneTrees, 
+      mappings, 
+      instance.speciesToSpid); 
   auto speciesNumber = static_cast<unsigned int>(mappings.getCoveredSpecies().size());
-  auto speciesLabels = mappings.getCoveredSpecies();
- 
-
-  std::vector<GeneCell> allGeneCells;
-  for (auto geneTree: geneTrees) {
-    allGeneCells.push_back(GeneCell(geneTree));
+  instance.speciesLabels = mappings.getCoveredSpecies();
+  for (auto geneTree: instance.geneTrees) {
+    instance.allGeneCells.push_back(GeneCell(geneTree));
   }
 
   if (arg.inputWeights.size()) {
     assert(false);
     readUserWeights(arg.inputWeights, userWeights);
-    if (userWeights.size() != allGeneCells.size()) {
+    if (userWeights.size() != instance.allGeneCells.size()) {
       Logger::info << "Error: the number of weights (" << userWeights.size() << 
-        ") is not equal to the number of input gene trees (" << allGeneCells.size() <<
+        ") is not equal to the number of input gene trees (" << instance.allGeneCells.size() <<
         "). Aborting. " << std::endl;
     }
-    for (unsigned int k = 0; k < allGeneCells.size(); ++k) {
-      allGeneCells[k].userWeight = userWeights[k];
+    for (unsigned int k = 0; k < instance.allGeneCells.size(); ++k) {
+      instance.allGeneCells[k].userWeight = userWeights[k];
     }
   }
-  auto K = static_cast<unsigned int>(allGeneCells.size());
-  fillGidToSpid(allGeneCells, mappings, speciesToSpid);
-  computeFamilyCoverage(allGeneCells, speciesNumber);
+  fillGidToSpid(instance.allGeneCells, mappings, instance.speciesToSpid);
+  computeFamilyCoverage(instance.allGeneCells, speciesNumber);
   std::unordered_map<BitVector, std::vector<GeneCell *> > cellMap;
-  for (auto &cell: allGeneCells) {
+
+  
+  for (auto &cell: instance.allGeneCells) {
     if (cell.coverage.count() < 4) {
       continue;
     }
@@ -538,32 +540,47 @@ int main(int argc, char * argv[])
     }
     cellMap[cell.coverage].push_back(&cell);
   }
-  std::vector<GeneCell *> geneCells;
-  std::vector<GeneCell *> perCoreGeneCells;
+  
   for (auto it: cellMap) {
-    geneCells.insert(geneCells.end(), it.second.begin(), it.second.end());
+    instance.geneCells.insert(instance.geneCells.end(), 
+        it.second.begin(), 
+        it.second.end());
   }
-  getPerCoreGeneCells(geneCells, perCoreGeneCells);
-  computeGeneDistances(arg, perCoreGeneCells);
+  getPerCoreGeneCells(instance.geneCells, instance.perCoreGeneCells);
+  computeGeneDistances(arg, instance.perCoreGeneCells);
+}
+
+
+int main(int argc, char * argv[])
+{
+  // user-specified arguments
+  Arguments arg(argc, argv);
+   
+  AsteroidInstance instance;
+  init(arg);
+  initInstance(arg,
+      arg.inputGeneTreeFile,
+      instance);
 
 
 
   std::string outputSpeciesTreeFile = arg.prefix + ".bestTree.newick";
   if (arg.stepwise) {
-    generateStepwiseTree(speciesToSpid, 
-        perCoreGeneCells,
+    generateStepwiseTree(instance.speciesToSpid, 
+        instance.perCoreGeneCells,
         outputSpeciesTreeFile);
     close();
     return 0;
   }
 
+  auto K = static_cast<unsigned int>(instance.geneCells.size());
   SpeciesTrees startingSpeciesTrees =
-    generateRandomSpeciesTrees(speciesLabels, 
-        speciesToSpid,
+    generateRandomSpeciesTrees(instance.speciesLabels, 
+        instance.speciesToSpid,
         std::max(arg.randomStartingTrees, 1u));
   if (arg.randomStartingTrees < 1) {
     optimize(*startingSpeciesTrees[0], 
-          perCoreGeneCells,
+          instance.perCoreGeneCells,
           getPerCoreUniformSampling(K),
           true,
           false);
@@ -572,7 +589,7 @@ int main(int argc, char * argv[])
   unsigned int index = 0;
   Logger::timed << "Asteroid will now search for the best scoring tree from " << startingSpeciesTrees.size() << " starting trees" << std::endl;
   ScoredTrees scoredTrees = search(startingSpeciesTrees,
-      perCoreGeneCells,
+      instance.perCoreGeneCells,
       getPerCoreUniformSampling(K),
       arg.noCorrection,
       startingSpeciesTrees.size() == 1,
@@ -590,21 +607,26 @@ int main(int argc, char * argv[])
     treesOs << st.tree->getNewickString() << std::endl;
     scoresOs << st.score << std::endl;
   }
-
-  if (arg.bootstrapTrees > 0) {
+  if (arg.bootstrapReplicates > 0) {
     Logger::info << std::endl;
-    Logger::timed << "Asteroid will now compute " << arg.bootstrapTrees << " bootstrap trees" << std::endl;
+    Logger::timed << "Asteroid will now compute " << arg.bootstrapReplicates << " bootstrap trees" << std::endl;
+    AsteroidInstance bsInstance;
+    init(arg);
+    initInstance(arg,
+        arg.inputBSGeneTreeFile,
+        bsInstance);
+
     std::string bsTreesFile = arg.prefix + ".bsTrees.newick";
     ParallelOfstream bsOs(bsTreesFile);
     SplitHashtable splits;
     index = 0;
-    for (unsigned int i = 0; i < arg.bootstrapTrees; ++i) {
+    for (unsigned int i = 0; i < arg.bootstrapReplicates; ++i) {
       SpeciesTrees startingBSTrees =
-        generateRandomSpeciesTrees(speciesLabels, 
-            speciesToSpid,
+        generateRandomSpeciesTrees(bsInstance.speciesLabels, 
+            bsInstance.speciesToSpid,
             1);
       ScoredTrees scoredBSTree = search(startingBSTrees,
-        perCoreGeneCells,
+        bsInstance.perCoreGeneCells,
         getPerCoreBSSampling(K),
         arg.noCorrection,
         false,
@@ -617,7 +639,6 @@ int main(int argc, char * argv[])
     bestTree.save(outputSpeciesTreeFile);
     Logger::timed << "Updating the best-scoring tree with support values into " << outputSpeciesTreeFile << std::endl;
   } 
-  
   close();
   return 0;
 

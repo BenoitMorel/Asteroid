@@ -11,9 +11,10 @@ struct Arguments {
   char ** argv;
 
   std::string inputGeneTreeFile;
+  std::string inputBSGeneTreeFile;
   std::string inputWeights;
   unsigned int randomStartingTrees;
-  unsigned int bootstrapTrees;
+  unsigned int bootstrapReplicates;
   std::string prefix;
   
   // if this argument is not set, we assume
