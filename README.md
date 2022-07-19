@@ -42,7 +42,7 @@ Here is a list of the available options:
 | `-i`, `--input-gene-trees <STRING>`     | 	 Path to file containing one gene tree per line, in newick format |
 |  `-r`,  `--random-starting-trees <INTEGER>` 	   |   Number of starting random trees. `0` to start from an ASTRID tree. Default value is `1`. |
 |`-b`, `--bs-replicates <INTEGER>`             |	 Number of bootstrap trees to compute. Default is 0. |
-|`--input-bs-gene-trees`   | The set of gene trees used to perform boostrapping. If not set, the intput gene trees (`-i`) are used instead.|
+|`--input-bs-gene-trees <STRING>`   | The set of gene trees used to perform boostrapping. If not set, the intput gene trees (`-i`) are used instead.|
 |`-p`, `--prefix <STRING>`               |  Prefix for the output files.|
 |`-m`, `--gene-species-mapping <STRING>`  	  | Path to the mapping file. If unset, Asteroid assumes that the gene tree leaf labels correspond to the species names. See our wiki for the format.|
 |`--seed <INTEGER>`                      |	 Random seed. Default is 1.| 
