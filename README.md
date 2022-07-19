@@ -44,11 +44,34 @@ Here is a list of the available options:
 |`-b`, `--bs-replicates <INTEGER>`             |	 Number of bootstrap trees to compute. Default is 0. |
 |`--input-bs-gene-trees <STRING>`   | The set of gene trees used to perform boostrapping. If not set, the intput gene trees (`-i`) are used instead.|
 |`-p`, `--prefix <STRING>`               |  Prefix for the output files.|
-|`-m`, `--gene-species-mapping <STRING>`  	  | Path to the mapping file. If unset, Asteroid assumes that the gene tree leaf labels correspond to the species names. See our wiki for the format.|
+|`-m`, `--gene-species-mapping <STRING>`  	  | Path to the mapping file. If unset, Asteroid assumes that the gene tree leaf labels correspond to the species names. The syntax is described below.|
 |`--seed <INTEGER>`                      |	 Random seed. Default is 1.| 
 |`-n`, `--no-correction`                  	| When set, Asteroid disables its missing data correction, and the algorithm is then equivalent to ASTRID.|
 |`--min-bl <REAL>`                       	| Branches with a length under this value will be contracted into polytomies before computing the distance matrices. Default value is `-1.0` (no contraction) | 
 | `--use-gene-bl`               |           	 Use the gene tree branch lengths instead of their internode distance to build the distance matrices |
+
+## Mapping file
+
+A gene-species mapping file is necessary if you have multi-copy gene trees (but also works for single-copy gene trees). There are two supported syntaxes:
+
+
+### Species-genes mapping file (PHYLDOG format)
+```
+species1:gene1;gene2;gene3
+species2:gene4;gene6
+species3:gene5
+```
+
+
+### Genes-species mapping file (TreeRecs format)
+```
+gene1 species1
+gene2 species1
+gene3 species1
+gene4 species2
+gene6 species2
+gene5 species3
+```
 
 
 ## Report bugs, ask questions
