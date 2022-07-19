@@ -58,7 +58,8 @@ void Arguments::printHelp()
   Logger::info << "Arguments:" << std::endl;
   Logger::info << "-i | --input-gene-trees <STRING>      \t Path to file containing one gene tree per line, in newick format" << std::endl;
   Logger::info << "-r | --random-starting-trees <INTEGER>\t Number of starting random trees. 0 to start from an ASTRID tree. Default value is 1." << std::endl;
-  Logger::info << "-b | --bs-trees <INTEGER>             \t Number of bootstrap trees to compute. Default is 0." << std::endl;
+  Logger::info << "-b | --bs-replicates <INTEGER>             \t Number of bootstrap trees to compute. Default is 0." << std::endl;
+  Logger::info < "--input-bs-gene-trees <STRING> | The set of gene trees used to perform boostrapping. If not set, the intput gene trees (`-i`) are used instead." << std::endl; 
   Logger::info << "-p | --prefix <STRING>                \t Prefix for the output files." << std::endl;
   Logger::info << "-m | --gene-species-mapping <STRING>  \t Path to the mapping file. If unset, Asteroid assumes that the gene tree leaf labels correspond to the species names. See our wiki for the format." << std::endl;
   Logger::info << "--seed <INTEGER>                      \t Random seed. Default is 1." << std::endl;
