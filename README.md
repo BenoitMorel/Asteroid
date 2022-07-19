@@ -10,7 +10,46 @@ For more information about the method, please check our manuscript (TODO!).
 
 ## Installation
 
+To download Asteroid, please use git,  and clone with --recursive!!!
+```
+git clone --recursive https://github.com/BenoitMorel/Asteroid
+```
+
+To install Asteroid, run:
+```
+./install.sh
+```
+The resulting executable is: `build/bin/asteroid`
+
+
 ## Running Asteroid
+
+The minimum syntax is:
+```
+./asteroid -i GENE_TREES 
+```
+
+To run with parallelization:
+```
+mpiexec -np CORES asteroid -i GENE_TREES
+```
+
+Here is a list of the available options:
+
+
+|    Command                |  Comment  |
+|---------------------------|-----------|
+| `-h`, `--help`  | Print the help message |
+| `-i`, `--input-gene-trees <STRING>`     | 	 Path to file containing one gene tree per line, in newick format |
+|  `-r`,  `--random-starting-trees <INTEGER>` 	   |   Number of starting random trees. `0` to start from an ASTRID tree. Default value is `1`. |
+|`-b`, `--bs-trees <INTEGER>`             |	 Number of bootstrap trees to compute. Default is 0. |
+|`-p`, `--prefix <STRING>`               |  Prefix for the output files.|
+|`-m`, `--gene-species-mapping <STRING>`  	  | Path to the mapping file. If unset, Asteroid assumes that the gene tree leaf labels correspond to the species names. See our wiki for the format.|
+|`--seed <INTEGER>`                      |	 Random seed. Default is 1.| 
+|`-n`, `--no-correction`                  	| When set, Asteroid disables its missing data correction, and the algorithm is then equivalent to ASTRID.|
+|`--min-bl <REAL>`                       	| Branches with a length under this value will be contracted into polytomies before computing the distance matrices. Default value is `-1.0` (no contraction) | 
+| `--use-gene-bl`               |           	 Use the gene tree branch lengths instead of their internode distance to build the distance matrices |
+
 
 ## Report bugs, asking questions
 
