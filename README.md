@@ -33,6 +33,8 @@ To run with parallelization:
 mpiexec -np CORES asteroid -i GENE_TREES
 ```
 
+We provide several example command lines in the examples folder. To run the examples, you have to be at the root of the repository (and run, for instance, `./examples/run_asteroid_simple.sh`).
+
 Here is a list of the available options:
 
 
