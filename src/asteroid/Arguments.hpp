@@ -6,7 +6,8 @@ struct Arguments {
   Arguments(int argc, char * argv[]);
   void printHelp();
   void printCommand();
- 
+  bool isOk();
+
   int argc;
   char ** argv;
 

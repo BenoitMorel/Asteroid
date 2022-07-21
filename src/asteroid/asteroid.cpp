@@ -555,9 +555,16 @@ int main(int argc, char * argv[])
 {
   // user-specified arguments
   Arguments arg(argc, argv);
-   
-  AsteroidInstance instance;
   init(arg);
+  
+  if (!arg.isOk()) {
+    Logger::info << "Aborting" << std::endl;
+    close();
+    return 1;
+  }
+
+
+  AsteroidInstance instance;
   initInstance(arg,
       arg.inputGeneTreeFile,
       instance);
@@ -596,7 +603,6 @@ int main(int argc, char * argv[])
       index);
   std::string outputSpeciesTreesFile = arg.prefix + ".allTrees.newick";
   std::string outputScoresFile = arg.prefix + ".scores.txt"; 
-  Logger::timed << "Final tree scores: " << std::endl;
   Logger::timed << "Printing the best tree into " << outputSpeciesTreeFile << std::endl;
   auto & bestTree = *scoredTrees[0].tree;
   bestTree.setAllBranchLengths(1.0);
@@ -610,8 +616,8 @@ int main(int argc, char * argv[])
   if (arg.bootstrapReplicates > 0) {
     Logger::info << std::endl;
     Logger::timed << "Asteroid will now compute " << arg.bootstrapReplicates << " bootstrap trees" << std::endl;
+    assert(arg.inputBSGeneTreeFile.size());
     AsteroidInstance bsInstance;
-    init(arg);
     initInstance(arg,
         arg.inputBSGeneTreeFile,
         bsInstance);

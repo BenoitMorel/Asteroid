@@ -51,6 +51,18 @@ Arguments::Arguments(int argc, char * argv[]):
       ParallelContext::abort(1);
     }
   }
+  if (inputBSGeneTreeFile.size() == 0) {
+    inputBSGeneTreeFile = inputGeneTreeFile;
+  }   
+}
+
+bool Arguments::isOk()
+{
+  if (inputGeneTreeFile.size() == 0) {
+    Logger::info << "Error: missing input gene tree file!" << std::endl;
+    return false;
+  }
+  return true;
 }
 
 void Arguments::printHelp() 
