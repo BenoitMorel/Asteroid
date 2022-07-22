@@ -34,11 +34,21 @@ void ParallelContext::init(void *commPtr)
     }   
   }
 #else
-  assert(false);
 #endif  
 
 
 }
+  
+
+bool ParallelContext::withMPI()
+{
+#ifdef WITH_MPI
+  return true;
+#else 
+  return false;
+#endif
+}
+
   
 void ParallelContext::finalize()
 {

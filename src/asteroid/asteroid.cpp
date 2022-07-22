@@ -54,9 +54,11 @@ static DistanceMatrix initDistancetMatrix(unsigned int N,
  */
 static void init(Arguments &arg)
 {
+  
   ParallelContext::init(nullptr);
   Logger::init();
   Logger::timed << "Starting Asteroid..." << std::endl;
+  Logger::info << "(Reminder: this executable was compiled without MPI, please make sure that you haven't called asteroid with mpirun or mpiexec)"  << std::endl;
   arg.printCommand();
   Random::setSeed(static_cast<unsigned int>(arg.seed));
   assert(ParallelContext::isRandConsistent());
@@ -504,6 +506,10 @@ void initInstance(const Arguments &arg,
   GeneSpeciesMapping mappings;
   
   readGeneTrees(inputGeneTreeFile, instance.geneTrees);
+  if (instance.geneTrees.size() == 0) {
+    Logger::info << "Please provide at least one input gene tree" << std::endl;
+    ParallelContext::abort(1);
+  }
   extractMappings(arg, 
       instance.geneTrees, 
       mappings, 

@@ -23,6 +23,8 @@ public:
    */
   static void init(void *commPtr);
 
+  static bool withMPI();
+
   /**
    *  Terminates the parallel context. Must always be called at the end of the programm
    */
