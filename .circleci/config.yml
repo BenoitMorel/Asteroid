@@ -3,7 +3,7 @@ version: 2.1
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
-  say-hello:
+  say-hi:
     # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
     # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     docker:
@@ -17,7 +17,7 @@ jobs:
           command: "git submodule update --init --recursive"
       - run:
           name: "Install"
-          command: "./install.sh"      
+          command: "./install.sh && cat build/bin/asteroid"      
       - run:
           name: "Coucou"
           command: "ls build/bin/asteroid"
@@ -33,5 +33,5 @@ jobs:
 workflows:
   say-hello-workflow:
     jobs:
-      - say-hello
+      - say-hi
 
