@@ -17,7 +17,7 @@ jobs:
           command: "git config --global http.sslverify false && git submodule update --init --recursive"
       - run:
           name: "Install"
-          command: "./install.sh"      
+          command: " brew install cmake && ./install.sh"      
       - run:
           name: "Coucou"
           command: "chmod 777 build/bin/asteroid && ./build/bin/asteroid"
