@@ -1,5 +1,3 @@
-# Use the latest 2.1 version of CircleCI pipeline process engine.
-# See: https://circleci.com/docs/2.0/configuration-reference
 version: 2.1
 
 # Define a job to be invoked later in a workflow.
@@ -20,6 +18,27 @@ jobs:
       - run:
           name: "Install"
           command: "./install.sh"
+  build:
+    working_directory: /tmp
+    docker:
+      - image: gcc:8.1.0
+        auth:
+          username: mydockerhub-user
+          password: $DOCKERHUB_PASSWORD  # context / 
+    steps:
+      - run:
+          name: Creating Dummy Artifacts
+          command: |
+            echo "my artifact file" > /tmp/art-1;
+            mkdir /tmp/artifacts;
+            echo "my artifact files in a dir" > /tmp/artifacts/art-2;
+      - store_artifacts:
+          path: /tmp/art-1
+          destination: artifact-file
+      - store_artifacts:
+          path: /tmp/artifacts
+
+
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
@@ -27,3 +46,5 @@ workflows:
   say-hello-workflow:
     jobs:
       - say-hello
+      - build
+
