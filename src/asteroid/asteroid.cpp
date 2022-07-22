@@ -57,7 +57,7 @@ static void init(Arguments &arg)
   
   ParallelContext::init(nullptr);
   Logger::init();
-  Logger::timed << "Starting Asteroid..." << std::endl;
+  Logger::timed << "Asteroid v1.0" << std::endl;
   Logger::info << "(Reminder: this executable was compiled without MPI, please make sure that you haven't called asteroid with mpirun or mpiexec)"  << std::endl;
   arg.printCommand();
   Random::setSeed(static_cast<unsigned int>(arg.seed));
