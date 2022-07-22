@@ -8,7 +8,7 @@ make -j 4
 echo "Now running unit tests..."
 cd ..
 
-run_tests.sh
+./run_tests.sh
 
 
 
