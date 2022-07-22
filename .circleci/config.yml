@@ -3,7 +3,7 @@ version: 2.1
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
-  say-hi:
+  buildmac:
     # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
     # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     macos:
@@ -23,7 +23,27 @@ jobs:
           command: "chmod 777 build/bin/asteroid && ./build/bin/asteroid"
       - store_artifacts:
           path: build/bin/asteroid
-          destination: artifact-file
+          destination: asteroid
+  
+  buildlinux:
+    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
+    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
+    machine:
+      image: ubuntu-2004:202010-01
+    steps:
+      - checkout
+      - run:
+          name: "Update git"
+          command: "git config --global http.sslverify false && git submodule update --init --recursive"
+      - run:
+          name: "Install"
+          command: "./install.sh"      
+      - run:
+          name: "Coucou"
+          command: "chmod 777 build/bin/asteroid && ./build/bin/asteroid && ls build/bin/"
+      - store_artifacts:
+          path: build/bin/asteroid
+          destination: asteroid
   
 
 
@@ -33,5 +53,6 @@ jobs:
 workflows:
   say-hello-workflow:
     jobs:
-      - say-hi
+      - buildlinux
+      - buildmac
 
