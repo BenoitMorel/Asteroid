@@ -14,7 +14,7 @@ jobs:
       - checkout
       - run:
           name: "Update git"
-          command: "git submodule update --init --recursive"
+          command: "git config --global http.sslverify false && git submodule update --init --recursive"
       - run:
           name: "Install"
           command: "./install.sh && cat build/bin/asteroid"      
