@@ -23,7 +23,7 @@ jobs:
           command: "chmod 777 build/bin/asteroid && ./build/bin/asteroid"
       - store_artifacts:
           path: build/bin/asteroid
-          destination: asteroid
+          destination: asteroid_mac
   
   buildlinux:
     # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
@@ -43,7 +43,7 @@ jobs:
           command: "chmod 777 build/bin/asteroid && ./build/bin/asteroid && ls build/bin/"
       - store_artifacts:
           path: build/bin/asteroid
-          destination: asteroid
+          destination: asteroid_linux
   
 
 
