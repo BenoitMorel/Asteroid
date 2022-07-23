@@ -9,6 +9,10 @@ Asteroid is parallelized, and can take as input multi-furcating and multi-copy g
 
 ## Installation
 
+If you do not need the parallelized version, you can get the linux and mac (asteroid_linux and asteroid_mac) binaries here: https://github.com/BenoitMorel/Asteroid/releases/tag/1.0
+If it doesn't work or if you want to parallelize with MPI, please read the following instructions:
+
+
 To download Asteroid, please use git,  and clone with --recursive!!!
 ```
 git clone --recursive https://github.com/BenoitMorel/Asteroid
