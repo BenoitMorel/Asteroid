@@ -45,6 +45,8 @@ Arguments::Arguments(int argc, char * argv[]):
       minBL = atof(argv[++i]);
     } else if (arg == "--stepwise") {
       stepwise = true;
+    } else if (arg == "--use-gene-bl") {
+      useGeneBL = true;
     } else {
       Logger::info << "Unrecognized argument " << arg << std::endl;
       Logger::info << "Aborting" << std::endl;

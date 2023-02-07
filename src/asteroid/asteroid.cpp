@@ -34,6 +34,9 @@ static void parseTrees(const std::string &inputGeneTreeFile,
     }
     geneTrees.push_back(std::make_shared<PLLUnrootedTree>(
           geneTreeStr, false));
+    if (geneTrees.size() % 100000 == 0) {
+      Logger::info << geneTrees.size() << std::endl;
+    }
   }
 }
 
@@ -78,6 +81,7 @@ static void readGeneTrees(const std::string &inputGeneTreeFile,
   Logger::timed << "Parsing gene trees..." << std::endl;
   parseTrees(inputGeneTreeFile,
       geneTrees);
+  Logger::timed << "End of parsing gene trees" << std::endl;
 }
   
 static void readUserWeights(const std::string &userWeightsFile, 
