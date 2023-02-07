@@ -1,0 +1,58 @@
+version: 2.1
+
+# Define a job to be invoked later in a workflow.
+# See: https://circleci.com/docs/2.0/configuration-reference/#jobs
+jobs:
+  buildmac:
+    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
+    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
+    macos:
+        xcode: "12.5.1"
+    #machine:
+    #  image: ubuntu-2004:202010-01
+    steps:
+      - checkout
+      - run:
+          name: "Update git"
+          command: "git config --global http.sslverify false && git submodule update --init --recursive"
+      - run:
+          name: "Install"
+          command: " brew install cmake && ./install.sh"      
+      - run:
+          name: "Coucou"
+          command: "chmod 777 build/bin/asteroid && ./build/bin/asteroid"
+      - store_artifacts:
+          path: build/bin/asteroid
+          destination: asteroid_mac
+  
+  buildlinux:
+    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
+    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
+    machine:
+      image: ubuntu-2004:202010-01
+    steps:
+      - checkout
+      - run:
+          name: "Update git"
+          command: "git config --global http.sslverify false && git submodule update --init --recursive"
+      - run:
+          name: "Install"
+          command: "./install.sh"      
+      - run:
+          name: "Coucou"
+          command: "chmod 777 build/bin/asteroid && ./build/bin/asteroid && ls build/bin/"
+      - store_artifacts:
+          path: build/bin/asteroid
+          destination: asteroid_linux
+  
+
+
+
+# Invoke jobs via workflows
+# See: https://circleci.com/docs/2.0/configuration-reference/#workflows
+workflows:
+  say-hello-workflow:
+    jobs:
+      - buildlinux
+      - buildmac
+
