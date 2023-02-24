@@ -18,7 +18,7 @@ To download Asteroid, please use git,  and clone with --recursive!!!
 git clone --recursive https://github.com/BenoitMorel/Asteroid
 ```
 
-To install Asteroid, run:
+To install Asteroid, run (note that you need to have cmake installed):
 ```
 ./install.sh
 ```
