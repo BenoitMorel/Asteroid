@@ -2,12 +2,14 @@
 
 Asteroid is a method that infers an unrooted species tree from a set of unrooted gene trees. It is robust to both incomplete lineage sorting and high proportions of missing genes. 
 
-Asteroid computes for each input gene tree a distance matrix based on the gene internode distance. Then, it computes a species tree from this set of distance matrices under the minimum balanced evolution principle. Asteroid is robust to high proportions of missing genes because, unlike ASTRID, it does not merge all distance matrices into one single distance matrix, but rather keeps all the distance matrices distinct and applies a bias correction to each of them. For a more detailed explanation of the method, please read our manuscript (Todo: add link).
+Asteroid computes for each input gene tree a distance matrix based on the gene internode distance. Then, it computes a species tree from this set of distance matrices under the minimum balanced evolution principle. Asteroid is robust to high proportions of missing genes because, unlike ASTRID, it does not merge all distance matrices into one single distance matrix, but rather keeps all the distance matrices distinct and applies a bias correction to each of them. For a more detailed explanation of the method, please read our [manuscript](https://academic.oup.com/bioinformatics/article/39/1/btac832/6964379).
 
 Asteroid is parallelized, and can take as input multi-furcating and multi-copy gene trees. It can computes bootstrap support values, either from the input gene trees, or from an alternative set of bootstrap gene trees.
 
 
 ## Installation
+
+Note that Asteroid is only supported on UNIX systems (linux and macos).c
 
 If you do not need the parallelized version, you can get the linux and mac (asteroid_linux and asteroid_mac) binaries here: https://github.com/BenoitMorel/Asteroid/releases/tag/1.0
 If it doesn't work or if you want to parallelize with MPI, please read the following instructions:
