@@ -115,10 +115,12 @@ static void extractMappings(const Arguments &arg,
 {
   Logger::timed << "Mapping gene to species..." << std::endl;
   if (!arg.geneSpeciesMapping.size()) {
+    Logger::timed << "Extracting mappings from the gene trees..." << std::endl;
     for (auto geneTree: geneTrees) {
       mappings.fillFromGeneTree(*geneTree);
     }
   } else {
+    Logger::timed << "Extracting mappings from " << arg.geneSpeciesMapping << std::endl;
     mappings.fillFromMappingFile(arg.geneSpeciesMapping); 
   }
   std::set<std::string> sortedSpecies(mappings.getCoveredSpecies().begin(),

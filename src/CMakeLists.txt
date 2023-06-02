@@ -5,11 +5,11 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Wextra")
 add_subdirectory(core)
   
 macro(add_program program_name program_sources)
-  if(LINUX) 
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-    set(BUILD_SHARED_LIBS OFF)
-    set(CMAKE_EXE_LINKER_FLAGS "-static")
-  endif()
+  #if(LINUX) 
+  #  set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+  #  set(BUILD_SHARED_LIBS OFF)
+  #  set(CMAKE_EXE_LINKER_FLAGS "-static")
+  #endif()
   add_executable(${program_name} ${program_sources})
   target_link_libraries(${program_name} 
     asteroid-core
