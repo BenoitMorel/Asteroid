@@ -60,7 +60,7 @@ Here is a list of the available options:
 
 ## Mapping file
 
-A gene-species mapping file is necessary if you have multi-copy gene trees (but also works for single-copy gene trees). There are two supported syntaxes:
+If the gene names (in the gene trees) are not the species name, you can use a gene-species mapping file. We support the two following formats:
 
 
 ### Species-genes mapping file (PHYLDOG format)
