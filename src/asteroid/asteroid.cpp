@@ -117,7 +117,7 @@ static void extractMappings(const Arguments &arg,
   if (!arg.geneSpeciesMapping.size()) {
     Logger::timed << "Extracting mappings from the gene trees..." << std::endl;
     for (auto geneTree: geneTrees) {
-      mappings.fillFromGeneTree(*geneTree);
+      mappings.fillFromGeneTree(*geneTree, true);
     }
   } else {
     Logger::timed << "Extracting mappings from " << arg.geneSpeciesMapping << std::endl;

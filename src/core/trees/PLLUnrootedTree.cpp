@@ -61,6 +61,20 @@ static corax_utree_t *buildUtree(const std::string &str, bool isFile)
   }
 }
 
+static void setNodeLabel(corax_unode_t *node, const std::string &label)
+{
+  free(node->label);
+  node->label = static_cast<char*>(malloc(sizeof(char) * (label.size() + 1)));
+  std::strcpy(node->label, label.c_str());
+}
+
+void PLLUnrootedTree::setLabel(unsigned int nodeIndex, const std::string &label)
+{
+  setNodeLabel(getNode(nodeIndex), label);
+}
+  
+
+
 PLLUnrootedTree::PLLUnrootedTree(const std::string &str, bool isFile):
   _tree(buildUtree(str, isFile), utreeDestroy)
 {

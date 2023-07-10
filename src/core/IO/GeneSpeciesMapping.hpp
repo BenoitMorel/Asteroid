@@ -24,8 +24,11 @@ public:
   /**
    *  Add all labels from the gene tree
    *  Each gene label should be equal to its species name
+   *  If fixDuplicates is set to true, we deduplicate the gene labels 
+   *  (we change the labels of the gene tree)
    */
-  void fillFromGeneTree(PLLUnrootedTree &geneTree); 
+  void fillFromGeneTree(PLLUnrootedTree &geneTree, bool fixDuplicates = false); 
+  
   void fill(const GeneSpeciesMapping &mapping);
  
   /*
@@ -57,6 +60,15 @@ public:
   {
     return _species;
   }
+
+  bool isCovered(const std::string &species) const {
+    return _species.find(species) != _species.end();
+  }
+
+  bool geneExists(const std::string &gene) const {
+    return _map.find(gene) != _map.end();
+  }
+
 private:
   std::unordered_map<std::string, std::string> _map; // <gene,species>
   std::unordered_set<std::string> _species;

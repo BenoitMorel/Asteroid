@@ -60,6 +60,8 @@ public:
     return areIsomorphic(*this, other);
   }
   
+  void setLabel(unsigned int nodeIndex, const std::string &label);
+  
   /*
    * Tree dimension
    */

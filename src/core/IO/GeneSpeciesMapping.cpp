@@ -84,12 +84,30 @@ void GeneSpeciesMapping::buildFromTreerecsMapping(std::ifstream &f)
 }
 
 
-void GeneSpeciesMapping::fillFromGeneTree(PLLUnrootedTree &geneTree)
+void GeneSpeciesMapping::fillFromGeneTree(PLLUnrootedTree &geneTree, bool fixDuplicates)
 {
+  unsigned int i = 0;
   for (auto leaf: geneTree.getLeaves()) {
-    std::string str(leaf->label);
-    _map[str] = std::string(str);
-    _species.insert(str);
+    std::string geneLabel(leaf->label);
+    auto speciesLabel = geneLabel;
+    if (fixDuplicates) {
+      while (geneExists(geneLabel)) {
+        // duplicated gene name, we rename it
+        geneLabel = speciesLabel + "_" + std::to_string(i);
+        ++i;
+      }
+      if (geneLabel != speciesLabel) {
+        // the gene name has chaned, update it
+        geneTree.setLabel(leaf->node_index, geneLabel);
+      }
+      _map[geneLabel] = std::string(speciesLabel);
+    } else {
+      if (geneExists(geneLabel)) {
+        std::cerr << "Warning, duplicated gene " + geneLabel + " in one of the gene trees. Aborting." << std::endl;
+        assert(false);
+      }
+    }
+    _species.insert(speciesLabel);
   }
 }
 
