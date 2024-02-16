@@ -100,13 +100,13 @@ void GeneSpeciesMapping::fillFromGeneTree(PLLUnrootedTree &geneTree, bool fixDup
         // the gene name has chaned, update it
         geneTree.setLabel(leaf->node_index, geneLabel);
       }
-      _map[geneLabel] = std::string(speciesLabel);
     } else {
       if (geneExists(geneLabel)) {
         std::cerr << "Warning, duplicated gene " + geneLabel + " in one of the gene trees. Aborting." << std::endl;
         assert(false);
       }
     }
+    _map[geneLabel] = std::string(speciesLabel);
     _species.insert(speciesLabel);
   }
 }
