@@ -53,7 +53,7 @@ Arguments::Arguments(int argc, char * argv[]):
       ParallelContext::abort(1);
     }
   }
-  if (inputBSGeneTreeFile.empty() == 0) {
+  if (inputBSGeneTreeFile.empty()) {
     inputBSGeneTreeFile = inputGeneTreeFile;
   }
   if (prefix.empty()) {
